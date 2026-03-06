@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { db, users } from '../../db'
 import { AppError } from '../../utils/AppError'
 import { generateToken } from './jwt'
@@ -24,8 +24,25 @@ export const login = async (username: string, password: string) => {
   const validPassword = await bcrypt.compare(password, user.passwordHash)
 
   if (!validPassword) {
+    await db
+      .update(users)
+      .set({
+        failedLoginAttempts: sql`${users.failedLoginAttempts} + 1`,
+        lockedUntil: sql`CASE WHEN ${users.failedLoginAttempts} + 1 >= 5 
+         THEN NOW() + INTERVAL '15 minutes' ELSE NULL END`,
+      })
+      .where(eq(users.id, user.id))
     throw new AppError('Invalid credentials', 401)
   }
+
+  await db
+    .update(users)
+    .set({
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: new Date(),
+    })
+    .where(eq(users.id, user.id))
 
   return {
     token: generateToken({

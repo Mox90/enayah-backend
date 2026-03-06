@@ -42,15 +42,22 @@ router.get('/error-test', (_req, res) => {
 })
 
 router.get('/db-check', async (_req, res) => {
-  const usersData = await db.query.users.findMany()
-  const deptData = await db.query.departments.findMany()
-  const empData = await db.query.employees.findMany()
+  if (process.env.NODE_ENV === 'production')
+    return res.status(404).json({ error: 'Not found' })
 
-  res.json({
-    users: usersData,
-    departments: deptData,
-    employees: empData,
-  })
+  try {
+    const usersData = await db.query.users.findMany()
+    const deptData = await db.query.departments.findMany()
+    const empData = await db.query.employees.findMany()
+
+    res.json({
+      users: usersData,
+      departments: deptData,
+      employees: empData,
+    })
+  } catch (error) {
+    res.status(500).json({ error: 'Database query failed' })
+  }
 })
 
 export default router

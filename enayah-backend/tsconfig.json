@@ -1,6 +1,32 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["ES2022"],
+
+    "module": "CommonJS",
+    "moduleResolution": "bundler",
+
+    "rootDir": "src",
+    "outDir": "dist",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "sourceMap": true,
+    "skipLibCheck": true,
+
+    "types": ["node"]
+  },
+  "include": ["src"]
+}
+
+/*{
+  "compilerOptions": {
+    "target": "ES2022",
     "module": "node16",
     "moduleResolution": "node16",
 
@@ -14,3 +40,4 @@
     "skipLibCheck": true
   }
 }
+  */

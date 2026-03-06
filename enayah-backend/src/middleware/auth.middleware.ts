@@ -17,9 +17,12 @@ export const authenticate = (
     throw new AppError('Unauthorized', 401)
   }
 
-  const decoded = verifyToken(token)
-
-  req.user = decoded as any
+  try {
+    const decoded = verifyToken(token)
+    req.user = decoded as any
+  } catch {
+    throw new AppError('Unauthorized', 401)
+  }
 
   next()
 }
