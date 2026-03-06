@@ -26,7 +26,10 @@ router.get('/db-test', async (req, res) => {
   }
 })
 
-router.get('/error-test', () => {
+router.get('/error-test', (_req, res) => {
+  if (process.env.NODE_ENV === 'production')
+    return res.status(404).json({ error: 'Not found' })
+
   throw new Error('Test crash!')
 })
 

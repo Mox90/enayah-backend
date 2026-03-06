@@ -1,5 +1,3 @@
-import { success } from 'zod'
-
 export const successResponse = (res: any, data: any, message = 'Success') => {
   return res.json({
     success: true,
