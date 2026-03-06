@@ -26,4 +26,8 @@ router.get('/db-test', async (req, res) => {
   }
 })
 
+router.get('/error-test', () => {
+  throw new Error('Test crash!')
+})
+
 export default router
