@@ -1,7 +1,15 @@
 import { Router } from 'express'
 import { db } from './db'
+import authRoutes from './modules/auth/auth.routes'
+import { authenticate } from './middleware/auth.middleware'
 
 const router = Router()
+
+router.use('/auth', authRoutes)
+
+router.get('/secure', authenticate, (req, res) => {
+  res.json({ user: req.user })
+})
 
 router.get('/', (_req, res) => {
   res.send('Enayah Backend API')
@@ -31,6 +39,25 @@ router.get('/error-test', (_req, res) => {
     return res.status(404).json({ error: 'Not found' })
 
   throw new Error('Test crash!')
+})
+
+router.get('/db-check', async (_req, res) => {
+  if (process.env.NODE_ENV === 'production')
+    return res.status(404).json({ error: 'Not found' })
+
+  try {
+    const usersData = await db.query.users.findMany()
+    const deptData = await db.query.departments.findMany()
+    const empData = await db.query.employees.findMany()
+
+    res.json({
+      users: usersData,
+      departments: deptData,
+      employees: empData,
+    })
+  } catch (error) {
+    res.status(500).json({ error: 'Database query failed' })
+  }
 })
 
 export default router

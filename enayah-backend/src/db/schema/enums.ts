@@ -21,3 +21,5 @@ export const pipStatusEnum = pgEnum('pip_status', [
   'completed',
   'failed',
 ])
+
+export const genderEnum = pgEnum('gender', ['male', 'female'])

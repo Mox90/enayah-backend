@@ -15,6 +15,20 @@
       "when": 1772799205720,
       "tag": "0001_slim_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772827888573,
+      "tag": "0002_late_zzzax",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772832820292,
+      "tag": "0003_fine_silver_centurion",
+      "breakpoints": true
     }
   ]
 }
