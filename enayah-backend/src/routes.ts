@@ -15,8 +15,15 @@ router.get('/health', (req, res) => {
 })
 
 router.get('/db-test', async (req, res) => {
-  const result = await db.execute('select now()')
-  res.json(result)
+  if (process.env.NODE_ENV === 'production')
+    return res.status(404).json({ error: 'Not found' })
+
+  try {
+    const result = await db.execute('select now()')
+    res.json(result)
+  } catch (error) {
+    res.status(500).json({ error: 'Database connection failed' })
+  }
 })
 
 export default router

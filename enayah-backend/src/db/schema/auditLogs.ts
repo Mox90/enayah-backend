@@ -13,5 +13,5 @@ export const auditLogs = pgTable('audit_logs', {
 
   performedBy: uuid('performed_by'),
 
-  createdAd: timestamp('created_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })

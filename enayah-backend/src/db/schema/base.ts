@@ -1,7 +1,4 @@
-import { integer } from 'drizzle-orm/gel-core'
-import { boolean } from 'drizzle-orm/pg-core'
-import { timestamp } from 'drizzle-orm/pg-core'
-import { uuid } from 'drizzle-orm/pg-core'
+import { boolean, integer, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const baseColumns = {
   createdAt: timestamp('created_at').defaultNow().notNull(),
