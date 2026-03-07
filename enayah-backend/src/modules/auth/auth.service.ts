@@ -3,19 +3,24 @@ import { eq, sql } from 'drizzle-orm'
 import { db, users } from '../../db'
 import { AppError } from '../../utils/AppError'
 import { generateToken } from './jwt'
+import { logger } from '../../config/logger'
 
 export const login = async (username: string, password: string) => {
-  return db.transaction(async (tx) => {
+  const result = db.transaction(async (tx) => {
     const user = await tx.query.users.findFirst({
       where: eq(users.username, username),
     })
 
     if (!user) throw new AppError('Invalid credentials', 401)
 
-    if (!user.isActive) throw new AppError('Account disabled', 403)
+    if (!user.isActive) {
+      logger.warn('Login attempt on disabled account!', { username })
+      throw new AppError('Invalid credentials', 401)
+    }
 
     if (user.lockedUntil && new Date() < user.lockedUntil) {
-      throw new AppError('Account locked. Please try again later!', 403)
+      logger.warn('Login attempt on disabled account!', { username })
+      throw new AppError('Invalid credentials', 401)
     }
 
     // 🔐 LOCAL LOGIN ONLY
@@ -36,8 +41,18 @@ export const login = async (username: string, password: string) => {
           })
           .where(eq(users.id, user.id))
 
-        throw new AppError('Invalid credentials', 401)
+        //throw new AppError('Invalid credentials', 401)
+        return { error: new AppError('Invalid credentials', 401) }
       }
+    } else if (user.authProvider === 'ad') {
+      logger.warn('AD login attempted but not configured', { username })
+      throw new AppError('Invalid credentials', 401)
+    } else {
+      logger.error('Unknown auth provider', {
+        username,
+        provider: user.authProvider,
+      })
+      throw new AppError('Invalid credentials', 401)
     }
 
     // ✅ RESET SUCCESS
@@ -58,4 +73,7 @@ export const login = async (username: string, password: string) => {
       }),
     }
   })
+
+  if ('error' in result) throw result.error
+  return result
 }
