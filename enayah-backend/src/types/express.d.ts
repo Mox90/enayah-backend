@@ -9,6 +9,11 @@ declare global {
         employeeId?: string | null
         departmentId?: string | null
       }
+      scope?: {
+        departmentId?: string | null
+        employeeId?: string | null
+        managerId?: string | null
+      }
     }
   }
 }
