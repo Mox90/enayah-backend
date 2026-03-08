@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'
 import { eq, sql } from 'drizzle-orm'
-import { db, users } from '../../db'
+import { db, employees, users } from '../../db'
 import { AppError } from '../../utils/AppError'
 import { generateToken } from './jwt'
 import { logger } from '../../config/logger'
@@ -55,6 +55,12 @@ export const login = async (username: string, password: string) => {
       throw new AppError('Invalid credentials', 401)
     }
 
+    const employee = user.employeeId
+      ? await tx.query.employees.findFirst({
+          where: eq(employees.id, user.employeeId),
+        })
+      : null
+
     // ✅ RESET SUCCESS
     await tx
       .update(users)
@@ -70,6 +76,7 @@ export const login = async (username: string, password: string) => {
         id: user.id,
         role: user.role,
         employeeId: user.employeeId,
+        departmentId: employee?.departmentId ?? null,
       }),
     }
   })

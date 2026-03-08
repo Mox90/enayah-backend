@@ -1,11 +1,14 @@
 import { Router } from 'express'
 import { db } from './db'
 import authRoutes from './modules/auth/auth.routes'
+import employeeRoutes from './modules/employees/employees.routes'
 import { authenticate } from './middleware/auth.middleware'
 
 const router = Router()
 
 router.use('/auth', authRoutes)
+
+router.use('/employees', employeeRoutes)
 
 router.get('/secure', authenticate, (req, res) => {
   res.json({ user: req.user })
