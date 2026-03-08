@@ -4,6 +4,7 @@ import { authenticate } from '../../middleware/auth.middleware'
 import { allowRoles } from '../../middleware/rbac.middleware'
 import { employeeObjectScope } from '../../middleware/objectScope.middleware'
 import { employeeListScope } from '../../middleware/listScope.middleware'
+import { fieldRead, fieldWrite } from '../../middleware/field.middleware'
 
 const router = Router()
 
@@ -13,6 +14,7 @@ router.get(
   '/',
   allowRoles('employees', 'read'),
   employeeListScope,
+  fieldRead('employees'),
   controller.list,
 )
 
@@ -20,6 +22,7 @@ router.get(
   '/:id',
   allowRoles('employees', 'read'),
   employeeObjectScope,
+  fieldRead('employees'),
   controller.getById,
 )
 
@@ -29,6 +32,7 @@ router.patch(
   '/:id',
   allowRoles('employees', 'update'),
   employeeObjectScope,
+  fieldWrite('employees'),
   controller.update,
 )
 
