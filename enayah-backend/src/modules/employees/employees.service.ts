@@ -1,9 +1,11 @@
 import { db } from '../../db'
-import { employees } from '../../db/schema'
+import { auditLogs, employees } from '../../db/schema'
 import { eq, ilike, and, or, inArray } from 'drizzle-orm'
 import { AppError } from '../../utils/AppError'
 import { getPagination } from '../../utils/pagination'
 import { getAllSubordinates } from './hierarchy.service'
+import { getChangedFields } from '../../utils/diff'
+import { id } from 'zod/locales'
 
 export const listEmployees = async (query: any) => {
   const { page, limit, search, departmentId, employeeId, managerId, role } =
@@ -68,27 +70,110 @@ export const getEmployeeById = async (id: string) => {
   return employee
 }
 
-export const createEmployee = async (data: any) => {
-  const [employee] = await db.insert(employees).values(data).returning()
-  return employee
+export const createEmployee = async (data: any, userId?: string) => {
+  return db.transaction(async (tx) => {
+    const [employee] = await tx.insert(employees).values(data).returning()
+
+    if (!employee) throw new AppError('Create failed', 500)
+
+    for (const key of Object.keys(employee)) {
+      await tx.insert(auditLogs).values({
+        tableName: 'employees',
+        recordId: employee.id,
+        fieldName: key,
+        oldValue: null,
+        newValue: (employee as any)[key],
+        action: 'CREATE',
+        performedBy: userId ?? null,
+      })
+    }
+
+    return employee
+  })
 }
 
-export const updateEmployee = async (id: string, data: any) => {
-  const [updated] = await db
-    .update(employees)
-    .set(data)
-    .where(eq(employees.id, id))
-    .returning()
+export const updateEmployee = async (
+  id: string,
+  data: any,
+  userId?: string,
+) => {
+  return db.transaction(async (tx) => {
+    const existing = await tx.query.employees.findFirst({
+      where: eq(employees.id, id),
+    })
 
-  if (!updated) throw new AppError('Employee not found', 404)
+    if (!existing) throw new AppError('Employee not found', 404)
 
-  return updated
+    if (existing.version !== data.version) {
+      throw new AppError('Version conflict', 409)
+    }
+
+    const [updated] = await tx
+      .update(employees)
+      .set({ ...data, version: existing.version + 1 })
+      .where(eq(employees.id, id))
+      .returning()
+
+    if (!updated) throw new AppError('Update failed', 500)
+
+    const changes = getChangedFields(existing, updated)
+
+    for (const c of changes) {
+      await tx.insert(auditLogs).values({
+        tableName: 'employees',
+        recordId: id,
+        fieldName: c.field,
+        oldValue: c.oldValue,
+        newValue: c.newValue,
+        action: 'UPDATE',
+        performedBy: userId ?? null,
+      })
+    }
+
+    return updated
+  })
 }
 
-export const deleteEmployee = async (id: string) => {
-  const deleted = await db.delete(employees).where(eq(employees.id, id))
+export const deleteEmployee = async (id: string, userId?: string) => {
+  //const deleted = await db.delete(employees).where(eq(employees.id, id))
 
-  if (!deleted) throw new AppError('Employee not found', 404)
+  //if (!deleted) throw new AppError('Employee not found', 404)
 
-  return true
+  //return true
+  return db.transaction(async (tx) => {
+    const existing = await tx.query.employees.findFirst({
+      where: eq(employees.id, id),
+    })
+
+    if (!existing) throw new AppError('Employee not found', 404)
+
+    const [updated] = await tx
+      .update(employees)
+      .set({
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: userId ?? null,
+        version: existing.version + 1,
+      })
+      .where(eq(employees.id, id))
+      .returning()
+
+    if (!updated) throw new AppError('Delete failed', 500)
+
+    const changes = getChangedFields(existing, updated)
+
+    for (const c of changes) {
+      await tx.insert(auditLogs).values({
+        tableName: 'employees',
+        recordId: id,
+        fieldName: c.field,
+        oldValue: c.oldValue,
+        newValue: c.newValue,
+        action: 'DELETE',
+        performedBy: userId ?? null,
+      })
+    }
+
+    return true
+  })
 }

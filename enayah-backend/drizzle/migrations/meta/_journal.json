@@ -29,6 +29,27 @@
       "when": 1772832820292,
       "tag": "0003_fine_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1772970349595,
+      "tag": "0004_bitter_flatman",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772971377772,
+      "tag": "0005_aberrant_spiral",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773058455601,
+      "tag": "0006_talented_tomorrow_man",
+      "breakpoints": true
     }
   ]
 }

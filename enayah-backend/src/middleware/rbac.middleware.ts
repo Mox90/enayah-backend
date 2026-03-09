@@ -9,7 +9,7 @@ export const allowRoles =
 
     const role = req.user.role
 
-    console.log('RBAC CHECK: ', role, resource, action)
+    //console.log('RBAC CHECK: ', role, resource, action)
 
     // ✅ SAFE ENTERPRISE CAST
     const allowed = RBAC[resource][action] as readonly string[]
