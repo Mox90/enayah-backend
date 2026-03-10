@@ -18,7 +18,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }*/
 
   const context = {
-    ip: req.headers['x-forwarded-for']?.toString().split(',')[0] ?? req.ip,
+    ip:
+      req.headers['x-forwarded-for']?.toString().split(',')[0] ||
+      req.socket.remoteAddress ||
+      req.ip,
+
     ua: req.headers['user-agent'],
   }
 
