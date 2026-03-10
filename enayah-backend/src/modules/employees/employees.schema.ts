@@ -25,7 +25,9 @@ export const createEmployeeSchema = z.object({
   managerId: z.uuid().optional().nullable(),
 })
 
-export const updateEmployeeSchema = createEmployeeSchema.partial()
+export const updateEmployeeSchema = createEmployeeSchema.partial().extend({
+  version: z.number().int().positive(),
+})
 
 export const listEmployeeQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),

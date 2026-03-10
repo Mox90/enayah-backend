@@ -4,23 +4,49 @@ import { db, employees, users } from '../../db'
 import { AppError } from '../../utils/AppError'
 import { generateToken } from './jwt'
 import { logger } from '../../config/logger'
+import { loginLogs } from '../../db/schema/loginLogs'
 
-export const login = async (username: string, password: string) => {
+export const login = async (
+  username: string,
+  password: string,
+  context: { ip?: string | undefined; ua?: string | undefined },
+) => {
   const result = db.transaction(async (tx) => {
+    const logAttempt = async (success: boolean, userId?: string) => {
+      await tx.insert(loginLogs).values({
+        userId: userId ?? null,
+        username,
+        success,
+        ipAddress: context.ip ?? null,
+        userAgent: context.ua ?? null,
+      })
+    }
+
     const user = await tx.query.users.findFirst({
       where: eq(users.username, username),
     })
 
-    if (!user) throw new AppError('Invalid credentials', 401)
-
-    if (!user.isActive) {
-      logger.warn('Login attempt on disabled account!', { username })
-      throw new AppError('Invalid credentials', 401)
+    // ❌ USER NOT FOUND
+    if (!user) {
+      await logAttempt(false)
+      //throw new AppError('Invalid credentials', 401)
+      return { error: new AppError('Invalid credentials', 401) }
     }
 
+    // ❌ DISABLED
+    if (!user.isActive) {
+      logger.warn('Login attempt on disabled account!', { username })
+      await logAttempt(false, user.id)
+      //throw new AppError('Invalid credentials', 401)
+      return { error: new AppError('Invalid credentials', 401) }
+    }
+
+    // ❌ LOCKED
     if (user.lockedUntil && new Date() < user.lockedUntil) {
       logger.warn('Login attempt on disabled account!', { username })
-      throw new AppError('Invalid credentials', 401)
+      await logAttempt(false, user.id)
+      //throw new AppError('Invalid credentials', 401)
+      return { error: new AppError('Invalid credentials', 401) }
     }
 
     // 🔐 LOCAL LOGIN ONLY
@@ -41,18 +67,21 @@ export const login = async (username: string, password: string) => {
           })
           .where(eq(users.id, user.id))
 
+        await logAttempt(false, user.id)
         //throw new AppError('Invalid credentials', 401)
         return { error: new AppError('Invalid credentials', 401) }
       }
     } else if (user.authProvider === 'ad') {
       logger.warn('AD login attempted but not configured', { username })
-      throw new AppError('Invalid credentials', 401)
+      await logAttempt(false, user.id)
+      return { error: new AppError('Invalid credentials', 401) }
     } else {
       logger.error('Unknown auth provider', {
         username,
         provider: user.authProvider,
       })
-      throw new AppError('Invalid credentials', 401)
+      await logAttempt(false, user.id)
+      return { error: new AppError('Invalid credentials', 401) }
     }
 
     const employee = user.employeeId
@@ -71,6 +100,8 @@ export const login = async (username: string, password: string) => {
       })
       .where(eq(users.id, user.id))
 
+    await logAttempt(true, user.id)
+
     return {
       token: generateToken({
         id: user.id,
@@ -81,6 +112,6 @@ export const login = async (username: string, password: string) => {
     }
   })
 
-  if ('error' in result) throw result.error
+  //if ('error' in result) throw result.error
   return result
 }

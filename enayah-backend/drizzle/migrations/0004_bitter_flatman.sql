@@ -1,0 +1,1 @@
+ALTER TABLE "audit_logs" ADD COLUMN "field_name" varchar(100) NOT NULL;
