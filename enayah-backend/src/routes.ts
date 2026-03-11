@@ -3,12 +3,24 @@ import { db } from './db'
 import authRoutes from './modules/auth/auth.routes'
 import employeeRoutes from './modules/employees/employees.routes'
 import { authenticate } from './middleware/auth.middleware'
+import {
+  anomalyBurstDetector,
+  suspiciousReadDetector,
+} from './middleware/anomaly.middleware'
+import anomalyRoutes from './modules/anomalies/anomaly.routes'
 
 const router = Router()
 
 router.use('/auth', authRoutes)
 
-router.use('/employees', employeeRoutes)
+router.use(
+  '/employees',
+  anomalyBurstDetector,
+  suspiciousReadDetector,
+  employeeRoutes,
+)
+
+router.use('/anomalies', anomalyRoutes)
 
 router.get('/secure', authenticate, (req, res) => {
   res.json({ user: req.user })

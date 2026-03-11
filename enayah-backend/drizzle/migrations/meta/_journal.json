@@ -50,6 +50,13 @@
       "when": 1773058455601,
       "tag": "0006_talented_tomorrow_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773214951515,
+      "tag": "0007_third_gauntlet",
+      "breakpoints": true
     }
   ]
 }

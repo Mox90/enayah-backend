@@ -4,6 +4,8 @@ import { employees } from '../db/schema'
 import { AppError } from '../utils/AppError'
 import { eq } from 'drizzle-orm'
 import { getAllSubordinates } from '../modules/employees/hierarchy.service'
+import { logAnomaly } from '../modules/anomalies/anomaly.services'
+import { ANOMALY_TYPES } from '../modules/anomalies/anomaly.types'
 
 export const employeeObjectScope = async (
   req: Request,
@@ -32,23 +34,6 @@ export const employeeObjectScope = async (
 
   if (role === 'admin' || role === 'hr') return next()
 
-  /*if (role === 'director') {
-    if (target.departmentId !== departmentId) {
-      throw new AppError('Forbidden', 403)
-    }
-    return next()
-  }
-
-  if (role === 'manager') {
-    if (
-      target.departmentId !== departmentId &&
-      target.managerId !== employeeId
-    ) {
-      throw new AppError('Forbidden', 403)
-    }
-    return next()
-  }*/
-
   // ⭐ DIRECTOR + MANAGER → hierarchy ONLY
   if (role === 'director' || role === 'manager') {
     if (!employeeId) throw new AppError('Forbidden', 403)
@@ -56,6 +41,15 @@ export const employeeObjectScope = async (
     const subs = await getAllSubordinates(employeeId)
 
     if (!subs.includes(id) && id !== employeeId) {
+      await logAnomaly(
+        ANOMALY_TYPES.FORBIDDEN_OBJECT_ACCESS,
+        {
+          userId: employeeId,
+          targetId: id,
+          role,
+        },
+        'HIGH',
+      )
       throw new AppError('Forbidden', 403)
     }
 

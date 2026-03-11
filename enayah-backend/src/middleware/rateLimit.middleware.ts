@@ -4,7 +4,7 @@ import { redis } from '../redis'
 import type { RedisReply } from 'rate-limit-redis'
 
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 5 * 60 * 1000,
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
