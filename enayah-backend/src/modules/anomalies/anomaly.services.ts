@@ -1,3 +1,4 @@
+import { securityLogger } from '../../config/securityLogger'
 import { anomalyLogs, db } from '../../db'
 //import { anomalyLogs } from '../../db/schema/anomalyLogs'
 
@@ -11,5 +12,11 @@ export const logAnomaly = async (
     metadata,
     severity,
     userId: metadata.userId ?? null,
+  })
+
+  securityLogger.warn('ANOMALY_DETECTED', {
+    type,
+    severity,
+    ...metadata,
   })
 }

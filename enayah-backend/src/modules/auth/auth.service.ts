@@ -7,6 +7,7 @@ import { logger } from '../../config/logger'
 import { loginLogs } from '../../db/schema/loginLogs'
 import { logAnomaly } from '../anomalies/anomaly.services'
 import { ANOMALY_TYPES } from '../anomalies/anomaly.types'
+import { securityLogger } from '../../config/securityLogger'
 
 export const login = async (
   username: string,
@@ -23,12 +24,48 @@ export const login = async (
         userAgent: context.ua ?? null,
       })
 
-      if (!success) {
-        /*const recentFails = await tx.query.loginLogs.findMany({
-          where: eq(loginLogs.username, username),
-          orderBy: (l, { desc }) => [desc(l.createdAt)],
-          limit: 5,
-        })*/
+      // ⭐ SIEM LOGGING (IMPORTANT)
+      if (success) {
+        securityLogger.log('LOGIN_SUCCESS', {
+          userId,
+          username,
+          ip: context.ip,
+          userAgent: context.ua,
+        })
+      } else {
+        securityLogger.warn('LOGIN_FAILED', {
+          userId,
+          username,
+          ip: context.ip,
+          userAgent: context.ua,
+        })
+
+        // ⭐ brute force detector (fix your logic here too)
+        const result = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(loginLogs)
+          .where(eq(loginLogs.username, username))
+
+        const count = result[0]?.count ?? 0
+
+        if (count >= 5) {
+          await logAnomaly(
+            ANOMALY_TYPES.LOGIN_BRUTE_FORCE,
+            {
+              username,
+              ip: context.ip,
+            },
+            'HIGH',
+          )
+        }
+      }
+
+      /*if (!success) {
+        //const recentFails = await tx.query.loginLogs.findMany({
+        //  where: eq(loginLogs.username, username),
+        //  orderBy: (l, { desc }) => [desc(l.createdAt)],
+        //  limit: 5,
+        //})
         const recentFails = await tx
           .select({ count: sql<number>`count(*)` })
           .from(loginLogs)
@@ -44,7 +81,7 @@ export const login = async (
             'HIGH',
           )
         }
-      }
+      }*/
     }
 
     const user = await tx.query.users.findFirst({
@@ -141,6 +178,13 @@ export const login = async (
         },
         'MEDIUM',
       )
+
+      securityLogger.warn('NEW_IP_LOGIN', {
+        userID: user.id,
+        username,
+        oldIp: lastLogin.ipAddress,
+        newIp: context.ip,
+      })
     }
 
     await logAttempt(true, user.id)

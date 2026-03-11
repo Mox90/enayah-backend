@@ -4,6 +4,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { successResponse } from '../../utils/response'
 import { eq } from 'drizzle-orm'
 import { AppError } from '../../utils/AppError'
+import { securityLogger } from '../../config/securityLogger'
 
 export const listAnomalies = asyncHandler(
   async (_req: Request, res: Response) => {
@@ -29,6 +30,11 @@ export const resolveAnomaly = asyncHandler(
     const { id } = Array.isArray(rawId) ? rawId[0] : rawId
 
     if (!id) throw new AppError('Anomaly ID required', 400)
+
+    securityLogger.log('ANOMALY_RESOLVED', {
+      resolvedBy: req.user?.id,
+      anomalyId: id,
+    })
 
     await db
       .update(anomalyLogs)
