@@ -5,6 +5,8 @@ import { AppError } from '../../utils/AppError'
 import { generateToken } from './jwt'
 import { logger } from '../../config/logger'
 import { loginLogs } from '../../db/schema/loginLogs'
+import { logAnomaly } from '../anomalies/anomaly.services'
+import { ANOMALY_TYPES } from '../anomalies/anomaly.types'
 
 export const login = async (
   username: string,
@@ -20,6 +22,29 @@ export const login = async (
         ipAddress: context.ip ?? null,
         userAgent: context.ua ?? null,
       })
+
+      if (!success) {
+        /*const recentFails = await tx.query.loginLogs.findMany({
+          where: eq(loginLogs.username, username),
+          orderBy: (l, { desc }) => [desc(l.createdAt)],
+          limit: 5,
+        })*/
+        const recentFails = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(loginLogs)
+          .where(eq(loginLogs.username, username))
+
+        if (recentFails.length === 5) {
+          await logAnomaly(
+            ANOMALY_TYPES.LOGIN_BRUTE_FORCE,
+            {
+              username,
+              ip: context.ip,
+            },
+            'HIGH',
+          )
+        }
+      }
     }
 
     const user = await tx.query.users.findFirst({
@@ -81,6 +106,7 @@ export const login = async (
         provider: user.authProvider,
       })
       await logAttempt(false, user.id)
+
       return { error: new AppError('Invalid credentials', 401) }
     }
 
@@ -99,6 +125,23 @@ export const login = async (
         lastLoginAt: new Date(),
       })
       .where(eq(users.id, user.id))
+
+    const lastLogin = await tx.query.loginLogs.findFirst({
+      where: eq(loginLogs.userId, user.id),
+      orderBy: (l, { desc }) => [desc(l.createdAt)],
+    })
+
+    if (lastLogin && lastLogin.ipAddress !== context.ip) {
+      await logAnomaly(
+        ANOMALY_TYPES.NEW_IP_LOGIN,
+        {
+          userId: user.id,
+          oldIp: lastLogin.ipAddress,
+          newIp: context.ip,
+        },
+        'MEDIUM',
+      )
+    }
 
     await logAttempt(true, user.id)
 
