@@ -57,6 +57,13 @@
       "when": 1773214951515,
       "tag": "0007_third_gauntlet",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773281362227,
+      "tag": "0008_fresh_lyja",
+      "breakpoints": true
     }
   ]
 }

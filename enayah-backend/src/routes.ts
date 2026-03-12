@@ -8,6 +8,7 @@ import {
   suspiciousReadDetector,
 } from './middleware/anomaly.middleware'
 import anomalyRoutes from './modules/anomalies/anomaly.routes'
+import consentRoutes from './modules/consent/consent.routes'
 
 const router = Router()
 
@@ -21,6 +22,8 @@ router.use(
 )
 
 router.use('/anomalies', anomalyRoutes)
+
+router.use('/consent', consentRoutes)
 
 router.get('/secure', authenticate, (req, res) => {
   res.json({ user: req.user })
