@@ -5,6 +5,7 @@ import { AppError } from '../../utils/AppError'
 import { getPagination } from '../../utils/pagination'
 import { getAllSubordinates } from './hierarchy.service'
 import { getChangedFields } from '../../utils/diff'
+import { assertNoLegalHold } from '../../utils/legalHold'
 
 const activeEmployeeWhere = (id: string) =>
   and(eq(employees.id, id), eq(employees.isDeleted, false))
@@ -97,6 +98,8 @@ export const updateEmployee = async (
 
     if (!existing) throw new AppError('Employee not found', 404)
 
+    await assertNoLegalHold('employees', id)
+
     const [updated] = await tx
       .update(employees)
       .set({ ...data, version: existing.version + 1 })
@@ -140,6 +143,8 @@ export const deleteEmployee = async (id: string, userId?: string) => {
     })
 
     if (!existing) throw new AppError('Employee not found', 404)
+
+    await assertNoLegalHold('employees', id)
 
     const [updated] = await tx
       .update(employees)

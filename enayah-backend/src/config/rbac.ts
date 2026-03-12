@@ -1,3 +1,5 @@
+import { update } from '../modules/employees/employees.controller'
+
 export const RBAC = {
   employees: {
     read: ['admin', 'hr', 'director', 'manager', 'employee'],
@@ -10,6 +12,11 @@ export const RBAC = {
   anomalies: {
     read: ['admin', 'hr', 'director'],
     update: ['admin', 'hr'],
+  },
+  legalHold: {
+    read: ['admin', 'hr'],
+    update: ['admin', 'hr'],
+    create: ['admin', 'hr'],
   },
 } as const
 
