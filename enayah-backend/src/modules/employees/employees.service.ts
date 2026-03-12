@@ -28,7 +28,7 @@ export const listEmployees = async (query: any) => {
   else if ((role === 'director' || role == 'manager') && employeeId) {
     const descendants = await getAllSubordinates(employeeId)
 
-    console.log('DESCENDANTS ', descendants)
+    //console.log('DESCENDANTS ', descendants)
 
     filters.push(
       or(
@@ -38,8 +38,8 @@ export const listEmployees = async (query: any) => {
     )
   }
 
-  console.log('FILTERS ', filters)
-  console.log('QUERY ', query)
+  //console.log('FILTERS ', filters)
+  //console.log('QUERY ', query)
 
   return db.query.employees.findMany({
     where: and(

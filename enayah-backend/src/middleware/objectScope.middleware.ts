@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { getAllSubordinates } from '../modules/employees/hierarchy.service'
 import { logAnomaly } from '../modules/anomalies/anomaly.services'
 import { ANOMALY_TYPES } from '../modules/anomalies/anomaly.types'
+import { securityLogger } from '../config/securityLogger'
 
 export const employeeObjectScope = async (
   req: Request,
@@ -34,6 +35,37 @@ export const employeeObjectScope = async (
 
   if (role === 'admin' || role === 'hr') return next()
 
+  // ✅ EMPLOYEE → SELF ONLY
+  if (role === 'employee') {
+    if (target.id !== employeeId) {
+      await logAnomaly(
+        ANOMALY_TYPES.FORBIDDEN_OBJECT_ACCESS,
+        {
+          userId: employeeId,
+          targetId: id,
+          role,
+          endpoint: req.originalUrl,
+          method: req.method,
+          ip: req.ip,
+        },
+        'HIGH',
+      )
+
+      /*securityLogger.warn('FORBIDDEN_ACCESS', {
+        userId: employeeId,
+        targetId: id,
+        role,
+        endpoint: req.originalUrl,
+        method: req.method,
+        ip: req.ip,
+      })*/
+
+      throw new AppError('Forbidden', 403)
+    }
+
+    return next()
+  }
+
   // ⭐ DIRECTOR + MANAGER → hierarchy ONLY
   if (role === 'director' || role === 'manager') {
     if (!employeeId) throw new AppError('Forbidden', 403)
@@ -50,18 +82,28 @@ export const employeeObjectScope = async (
         },
         'HIGH',
       )
+
+      securityLogger.warn('FORBIDDEN_ACCESS', {
+        userId: employeeId,
+        targetId: id,
+        role,
+        endpoint: req.originalUrl,
+        method: req.method,
+        ip: req.ip,
+      })
+
       throw new AppError('Forbidden', 403)
     }
 
     return next()
   }
 
-  if (role === 'employee') {
+  /*if (role === 'employee') {
     if (target.id !== employeeId) {
       throw new AppError('Forbidden', 403)
     }
     return next()
-  }
+  }*/
 
   throw new AppError('Forbidden', 403)
 }
