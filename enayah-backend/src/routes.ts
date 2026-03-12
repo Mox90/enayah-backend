@@ -9,6 +9,7 @@ import {
 } from './middleware/anomaly.middleware'
 import anomalyRoutes from './modules/anomalies/anomaly.routes'
 import consentRoutes from './modules/consent/consent.routes'
+import legalHoldRoutes from './modules/legalHold/legalHold.routes'
 
 const router = Router()
 
@@ -24,6 +25,8 @@ router.use(
 router.use('/anomalies', anomalyRoutes)
 
 router.use('/consent', consentRoutes)
+
+router.use('/legal-holds', legalHoldRoutes)
 
 router.get('/secure', authenticate, (req, res) => {
   res.json({ user: req.user })

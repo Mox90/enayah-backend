@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "legal_holds_active_record_uq" ON "legal_holds" USING btree ("table_name","record_id") WHERE "legal_holds"."is_active" = true;
