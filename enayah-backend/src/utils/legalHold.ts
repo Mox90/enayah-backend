@@ -1,12 +1,14 @@
 import { db } from '../db'
 import { legalHolds } from '../db/schema/legalHolds'
 import { and, eq } from 'drizzle-orm'
+import { AppError } from './AppError'
 
 export const assertNoLegalHold = async (
+  tx: any,
   tableName: string,
   recordId: string,
 ) => {
-  const hold = await db.query.legalHolds.findFirst({
+  const hold = await tx.query.legalHolds.findFirst({
     where: and(
       eq(legalHolds.tableName, tableName),
       eq(legalHolds.recordId, recordId),
@@ -15,6 +17,6 @@ export const assertNoLegalHold = async (
   })
 
   if (hold) {
-    throw new Error('This record is under legal hold')
+    throw new AppError('This record is under legal hold', 409)
   }
 }

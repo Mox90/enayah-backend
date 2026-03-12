@@ -98,7 +98,7 @@ export const updateEmployee = async (
 
     if (!existing) throw new AppError('Employee not found', 404)
 
-    await assertNoLegalHold('employees', id)
+    await assertNoLegalHold(tx, 'employees', id)
 
     const [updated] = await tx
       .update(employees)
@@ -144,7 +144,7 @@ export const deleteEmployee = async (id: string, userId?: string) => {
 
     if (!existing) throw new AppError('Employee not found', 404)
 
-    await assertNoLegalHold('employees', id)
+    await assertNoLegalHold(tx, 'employees', id)
 
     const [updated] = await tx
       .update(employees)

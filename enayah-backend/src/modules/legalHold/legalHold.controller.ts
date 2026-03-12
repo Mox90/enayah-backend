@@ -2,12 +2,14 @@ import { Request, Response } from 'express'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { successResponse } from '../../utils/response'
 import * as service from './legalHold.service'
+import { AppError } from '../../utils/AppError'
 
 export const createHold = asyncHandler(async (req: Request, res: Response) => {
   const { tableName, recordId, reason } = req.body
 
   if (!tableName || !recordId) {
-    throw new Error('tableName and recordId are required')
+    //throw new Error('tableName and recordId are required')
+    throw new AppError('tableName and recordId are required', 400)
   }
 
   const result = await service.createLegalHold(
