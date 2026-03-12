@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { db, employees, users } from '../../db'
 import { AppError } from '../../utils/AppError'
 import { generateToken } from './jwt'
@@ -44,7 +44,13 @@ export const login = async (
         const result = await tx
           .select({ count: sql<number>`count(*)` })
           .from(loginLogs)
-          .where(eq(loginLogs.username, username))
+          .where(
+            and(
+              eq(loginLogs.username, username),
+              eq(loginLogs.success, false),
+              sql`${loginLogs.createdAt} > NOW() - INTERVAL '15 minutes'`,
+            ),
+          )
 
         const count = result[0]?.count ?? 0
 
@@ -180,7 +186,7 @@ export const login = async (
       )
 
       securityLogger.warn('NEW_IP_LOGIN', {
-        userID: user.id,
+        userId: user.id,
         username,
         oldIp: lastLogin.ipAddress,
         newIp: context.ip,

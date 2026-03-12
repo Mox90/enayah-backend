@@ -44,18 +44,21 @@ export const employeeObjectScope = async (
           userId: employeeId,
           targetId: id,
           role,
+          endpoint: req.originalUrl,
+          method: req.method,
+          ip: req.ip,
         },
         'HIGH',
       )
 
-      securityLogger.warn('FORBIDDEN_ACCESS', {
+      /*securityLogger.warn('FORBIDDEN_ACCESS', {
         userId: employeeId,
         targetId: id,
         role,
         endpoint: req.originalUrl,
         method: req.method,
         ip: req.ip,
-      })
+      })*/
 
       throw new AppError('Forbidden', 403)
     }
