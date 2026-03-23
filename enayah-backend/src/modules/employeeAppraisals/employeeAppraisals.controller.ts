@@ -1,7 +1,8 @@
 import { AppError } from '../../utils/AppError'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { successResponse } from '../../utils/response'
-import * as service from './employeeAppraisal.service'
+import * as service from './employeeAppraisals.service'
+import * as appraisalService from '../appraisalCycles/appraisal.service'
 import { Request, Response } from 'express'
 
 export const launchAppraisalController = asyncHandler(
@@ -20,5 +21,15 @@ export const launchAppraisalController = asyncHandler(
     )
 
     return successResponse(res, result, 'Appraisal launched')
+  },
+)
+
+export const submitAppraisalController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params
+
+    const result = await appraisalService.submitScoring(id)
+
+    return successResponse(res, result, 'Appraisal submitted successfully')
   },
 )
