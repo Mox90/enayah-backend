@@ -46,6 +46,9 @@ export const submitScoring = async (appraisalId: string) => {
     if (appraisal.status === 'submitted') {
       throw new AppError('Appraisal already submitted', 400)
     }
+    //if (appraisal.status !== 'draft') {
+    //  throw new AppError('Appraisal cannot be modified in current status', 400)
+    //}
 
     // ✅ 2. Get goals
     const goals = await tx.query.employeeGoals.findMany({

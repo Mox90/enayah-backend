@@ -4,7 +4,7 @@ import { pipStatusEnum } from './enums'
 import { employeeAppraisals } from './employeeAppraisals'
 
 export const performanceImprovementPlans = pgTable('pips', {
-  ...baseColumns,
+  id: uuid('id').defaultRandom().primaryKey(),
   appraisalId: uuid('appraisal_id')
     .notNull()
     .references(() => employeeAppraisals.id, { onDelete: 'restrict' }),
@@ -13,4 +13,5 @@ export const performanceImprovementPlans = pgTable('pips', {
   objectives: text('objectives'),
   successCriteria: text('success_criteria'),
   status: pipStatusEnum('status').default('active'),
+  ...baseColumns,
 })

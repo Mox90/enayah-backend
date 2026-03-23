@@ -1,5 +1,11 @@
 import { eq, and } from 'drizzle-orm'
-import { db, employees, employeeAppraisals } from '../../db'
+import {
+  db,
+  employees,
+  employeeAppraisals,
+  positions,
+  departments,
+} from '../../db'
 import { AppError } from '../../utils/AppError'
 
 export const launchAppraisal = async (
@@ -9,6 +15,10 @@ export const launchAppraisal = async (
 ) => {
   const employee = await db.query.employees.findFirst({
     where: eq(employees.id, employeeId),
+    with: {
+      position: true,
+      department: true,
+    },
   })
 
   if (!employee) throw new AppError('Employee not found', 404)
@@ -32,7 +42,12 @@ export const launchAppraisal = async (
 
       employeeNumberSnapshot: employee.employeeNumber,
       employeeNameSnapshot: `${employee.firstName} ${employee.familyName}`,
-      jobTitleSnapshot: employee.positionId,
+      employeeNameArSnapshot: `${employee.firstNameAr} ${employee.familyNameAr}`,
+      //      jobTitleSnapshot: employee.positionId,
+      jobTitleSnapshot: employee.position?.name ?? null,
+      jobTitleArSnapshot: employee.position?.nameAr ?? null,
+      departmentSnapshot: employee.department?.name ?? null,
+      departmentArSnapshot: employee.department?.nameAr ?? null,
     })
     .returning()
 
