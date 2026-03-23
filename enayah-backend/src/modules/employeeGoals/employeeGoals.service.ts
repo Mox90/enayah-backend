@@ -15,6 +15,13 @@ export const savePlanningGoals = async (
     throw new AppError('At least one goal is required', 400)
   }
 
+  if (goals.some((g) => g.title.trim().length < 3)) {
+    throw new AppError(
+      'Goal title must be at least 3 non-space characters',
+      400,
+    )
+  }
+
   // ✅ 1. Validate total weight
   const totalWeight = goals.reduce(
     (sum, g) => sum + Number(g.relativeWeight),

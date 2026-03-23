@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const EPSILON = 1e-6
+
 export const validateTotalWeight = (
   items: { relativeWeight: number }[],
   ctx: z.RefinementCtx,
@@ -8,7 +10,7 @@ export const validateTotalWeight = (
   // ✅ 1. weight validation
   const total = items.reduce((sum, i) => sum + i.relativeWeight, 0)
 
-  if (total !== 100) {
+  if (Math.abs(total - 100) > EPSILON) {
     ctx.addIssue({
       code: 'custom',
       message: `${label} weight must equal 100%`,
