@@ -13,6 +13,7 @@ export const appraisalStatusEnum = pgEnum('appraisal_status', [
   'submitted',
   'manager_review',
   'hr_review',
+  'calibrated',
   'closed',
 ])
 
