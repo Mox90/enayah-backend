@@ -2,14 +2,19 @@ import { eq } from 'drizzle-orm'
 import { db, employeeGoals } from '../../db'
 import { AppError } from '../../utils/AppError'
 import { z } from 'zod'
-import { goalItemSchema } from './employeeGoals.schema'
+import { goalItemSchema, goalScoringItemSchema } from './employeeGoals.schema'
 
 type GoalInput = z.infer<typeof goalItemSchema>
+type GoalScoreInput = z.infer<typeof goalScoringItemSchema>
 
 export const savePlanningGoals = async (
   appraisalId: string,
   goals: GoalInput[],
 ) => {
+  if (!goals.length) {
+    throw new AppError('At least one goal is required', 400)
+  }
+
   // ✅ 1. Validate total weight
   const totalWeight = goals.reduce(
     (sum, g) => sum + Number(g.relativeWeight),
@@ -35,7 +40,7 @@ export const savePlanningGoals = async (
     const inserted = await tx.insert(employeeGoals).values(
       goals.map((g) => ({
         appraisalId,
-        title: g.title,
+        title: g.title.trim(),
         measurementStandard: g.measurementStandard ?? null,
         relativeWeight: String(g.relativeWeight), // numeric → string
         targetOutput: g.targetOutput ?? null,
@@ -44,5 +49,41 @@ export const savePlanningGoals = async (
     )
 
     return inserted
+  })
+}
+
+export const updateGoalRatings = async (
+  appraisalId: string,
+  goals: GoalScoreInput[],
+) => {
+  return db.transaction(async (tx) => {
+    // ✅ ensure goals belong to appraisal
+    const existing = await tx.query.employeeGoals.findMany({
+      where: eq(employeeGoals.appraisalId, appraisalId),
+    })
+
+    if (!existing.length) {
+      throw new AppError('No goals found', 404)
+    }
+
+    const ids = existing.map((g) => g.id)
+
+    // ❗ prevent tampering
+    const invalid = goals.some((g) => !ids.includes(g.id))
+    if (invalid) {
+      throw new AppError('Invalid goal ID provided', 400)
+    }
+
+    // ✅ update ratings
+    for (const g of goals) {
+      await tx
+        .update(employeeGoals)
+        .set({
+          fulfillmentRating: g.fulfillmentRating,
+        })
+        .where(eq(employeeGoals.id, g.id))
+    }
+
+    return true
   })
 }

@@ -10,6 +10,10 @@ import {
 import anomalyRoutes from './modules/anomalies/anomaly.routes'
 import consentRoutes from './modules/consent/consent.routes'
 import legalHoldRoutes from './modules/legalHold/legalHold.routes'
+import appraisalCycleRoutes from './modules/appraisalCycles/appraisalCycles.routes'
+import employeeAppraisalRoutes from './modules/employeeAppraisals/employeeAppraisals.routes'
+import goalRoutes from './modules/employeeGoals/employeeGoals.routes'
+import competencyRoutes from './modules/employeeCompetencies/employeeCompetencies.routes'
 
 const router = Router()
 
@@ -27,6 +31,11 @@ router.use('/anomalies', anomalyRoutes)
 router.use('/consent', consentRoutes)
 
 router.use('/legal-holds', legalHoldRoutes)
+
+router.use('/appraisal-cycles', appraisalCycleRoutes)
+router.use('/appraisals', employeeAppraisalRoutes)
+router.use('/goals', goalRoutes)
+router.use('/competencies', competencyRoutes)
 
 router.get('/secure', authenticate, (req, res) => {
   res.json({ user: req.user })
