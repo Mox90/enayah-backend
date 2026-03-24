@@ -28,10 +28,12 @@ router.post(
   '/:id/submit',
   allowRoles('employeeAppraisals', 'update'),
   controller.submitAppraisalController,
-  //async (req, res, next) => {
-  // delegate to appraisal.service.submitScoring
-  //  next()
-  //},
+)
+
+router.put(
+  '/feedback',
+  allowRoles('employeeAppraisals', 'update'),
+  controller.updateFeedbackController,
 )
 
 export default router

@@ -61,6 +61,7 @@ export const updateCompetencyRatings = async (
   competencies: CompetencyScoreInput[],
 ) => {
   return db.transaction(async (tx) => {
+    // ✅ fetch existing competencies
     const existing = await tx.query.employeeCompetencies.findMany({
       where: eq(employeeCompetencies.appraisalId, appraisalId),
     })
@@ -69,18 +70,29 @@ export const updateCompetencyRatings = async (
       throw new AppError('No competencies found', 404)
     }
 
-    const ids = existing.map((c) => c.id)
+    // ✅ map for fast lookup
+    const existingMap = new Map(existing.map((c) => [c.id, c]))
 
-    const invalid = competencies.some((c) => !ids.includes(c.id))
+    // ❗ prevent tampering
+    const invalid = competencies.some((c) => !existingMap.has(c.id))
     if (invalid) {
       throw new AppError('Invalid competency ID provided', 400)
     }
 
+    // ✅ update ratings + weighted score
     for (const c of competencies) {
+      const comp = existingMap.get(c.id)!
+
+      const weight = Number(comp.relativeWeight) // stored as string
+      const rating = c.fulfillmentRating
+
+      const weightedScore = rating * (weight / 100)
+
       await tx
         .update(employeeCompetencies)
         .set({
-          fulfillmentRating: c.fulfillmentRating,
+          fulfillmentRating: rating,
+          weightedScore: String(weightedScore), // ⭐ IMPORTANT
         })
         .where(eq(employeeCompetencies.id, c.id))
     }

@@ -64,7 +64,7 @@ export const updateGoalRatings = async (
   goals: GoalScoreInput[],
 ) => {
   return db.transaction(async (tx) => {
-    // ✅ ensure goals belong to appraisal
+    // ✅ fetch existing goals
     const existing = await tx.query.employeeGoals.findMany({
       where: eq(employeeGoals.appraisalId, appraisalId),
     })
@@ -73,20 +73,28 @@ export const updateGoalRatings = async (
       throw new AppError('No goals found', 404)
     }
 
-    const ids = existing.map((g) => g.id)
+    const existingMap = new Map(existing.map((g) => [g.id, g]))
 
     // ❗ prevent tampering
-    const invalid = goals.some((g) => !ids.includes(g.id))
+    const invalid = goals.some((g) => !existingMap.has(g.id))
     if (invalid) {
       throw new AppError('Invalid goal ID provided', 400)
     }
 
-    // ✅ update ratings
+    // ✅ update ratings + weighted score
     for (const g of goals) {
+      const goal = existingMap.get(g.id)!
+
+      const weight = Number(goal.relativeWeight) // numeric stored as string
+      const rating = g.fulfillmentRating
+
+      const weightedScore = rating * (weight / 100)
+
       await tx
         .update(employeeGoals)
         .set({
-          fulfillmentRating: g.fulfillmentRating,
+          fulfillmentRating: rating,
+          weightedScore: String(weightedScore), // ⭐ IMPORTANT
         })
         .where(eq(employeeGoals.id, g.id))
     }

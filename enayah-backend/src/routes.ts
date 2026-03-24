@@ -14,6 +14,7 @@ import appraisalCycleRoutes from './modules/appraisalCycles/appraisalCycles.rout
 import employeeAppraisalRoutes from './modules/employeeAppraisals/employeeAppraisals.routes'
 import goalRoutes from './modules/employeeGoals/employeeGoals.routes'
 import competencyRoutes from './modules/employeeCompetencies/employeeCompetencies.routes'
+import appraisalApprovalRoutes from './modules/appraisalApprovals/appraisalApproval.routes'
 
 const router = Router()
 
@@ -36,6 +37,7 @@ router.use('/appraisal-cycles', appraisalCycleRoutes)
 router.use('/appraisals', employeeAppraisalRoutes)
 router.use('/goals', goalRoutes)
 router.use('/competencies', competencyRoutes)
+router.use('/appraisals-approvals', appraisalApprovalRoutes)
 
 router.get('/secure', authenticate, (req, res) => {
   res.json({ user: req.user })

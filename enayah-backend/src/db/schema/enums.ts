@@ -24,3 +24,11 @@ export const pipStatusEnum = pgEnum('pip_status', [
 ])
 
 export const genderEnum = pgEnum('gender', ['male', 'female'])
+
+export const appraisalRatingEnum = pgEnum('appraisal_rating', [
+  'outstanding',
+  'exceeds',
+  'meets',
+  'needs_improvement',
+  'unsatisfactory',
+])

@@ -1,6 +1,6 @@
 import { pgTable, uuid, numeric, varchar, text } from 'drizzle-orm/pg-core'
 import { baseColumns } from './base'
-import { appraisalStatusEnum } from './enums'
+import { appraisalRatingEnum, appraisalStatusEnum } from './enums'
 import { employees } from './employees'
 import { appraisalCycles } from './appraisalCycles'
 
@@ -23,7 +23,7 @@ export const employeeAppraisals = pgTable('employee_appraisals', {
   goalsScore: numeric('goals_score'),
   competenciesScore: numeric('competencies_score'),
   finalScore: numeric('final_score'),
-  overallRating: varchar('overall_rating', { length: 100 }),
+  overallRating: appraisalRatingEnum('overall_rating'),
   status: appraisalStatusEnum('status').default('draft'),
   strengths: text('strengths'),
   developmentAreas: text('development_areas'),
