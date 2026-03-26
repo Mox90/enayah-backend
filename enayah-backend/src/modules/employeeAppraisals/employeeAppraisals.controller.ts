@@ -104,7 +104,11 @@ export const rejectAppraisalController = asyncHandler(
 
     const { reason } = req.body
 
-    const result = await service.rejectAppraisal(id, employeeId!, reason)
+    if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+      throw new AppError('Rejection reason is required', 400)
+    }
+
+    const result = await service.rejectAppraisal(id, employeeId!, reason.trim())
 
     return successResponse(res, result, 'Appraisal rejected')
   },

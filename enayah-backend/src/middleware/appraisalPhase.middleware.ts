@@ -29,6 +29,14 @@ const rules: Record<string, PhaseRule> = {
     allowedRoles: ['hr'],
     allowedStatuses: ['hr_review'],
   },
+  reject: {
+    allowedRoles: ['employee'],
+    allowedStatuses: ['manager_review'],
+  },
+  reopen: {
+    allowedRoles: ['manager', 'director'],
+    allowedStatuses: ['submitted'],
+  },
 }
 
 export const enforceAppraisalPhase = (action: keyof typeof rules) => {

@@ -346,6 +346,10 @@ export const reopenAppraisal = async (
 
   if (!appraisal) throw new AppError('Appraisal not found', 404)
 
+  if (appraisal.appraiserId !== managerId) {
+    throw new AppError('Not authorized to reopen this appraisal', 403)
+  }
+
   if (!appraisal.isRejected) {
     throw new AppError('Appraisal is not rejected', 400)
   }

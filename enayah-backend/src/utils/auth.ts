@@ -56,11 +56,11 @@ export const requireHR = (req: Request): string => {
     throw new AppError('HR role required', 403)
   }
 
-  if (!user.employeeId) {
-    throw new AppError('User must be linked to employee', 403)
-  }
+  //if (!user.employeeId) {
+  //  throw new AppError('User must be linked to employee', 403)
+  //}
 
-  return user.employeeId
+  return user.id
 }
 
 export const requireAdmin = (req: Request): string => {

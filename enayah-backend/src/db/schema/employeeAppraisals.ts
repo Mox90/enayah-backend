@@ -33,7 +33,10 @@ export const employeeAppraisals = pgTable('employee_appraisals', {
   finalScore: numeric('final_score'),
   overallRating: appraisalRatingEnum('overall_rating'),
   status: appraisalStatusEnum('status').default('draft'),
-  phase: varchar('phase', { length: 50 }).default('planning'),
+  phase: varchar('phase', { length: 50 })
+    .notNull()
+    .$type<'planning' | 'evaluation'>()
+    .default('planning'),
   strengths: text('strengths'),
   developmentAreas: text('development_areas'),
   comments: text('comments'),
