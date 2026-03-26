@@ -18,7 +18,7 @@ export const RBAC = {
   },
   employeeAppraisals: {
     read: ['admin', 'hr', 'manager', 'director', 'employee'],
-    update: ['admin', 'hr', 'manager', 'director'],
+    update: ['admin', 'hr', 'manager', 'director', 'employee'],
     create: ['admin', 'hr', 'manager', 'director'],
   },
 } as const

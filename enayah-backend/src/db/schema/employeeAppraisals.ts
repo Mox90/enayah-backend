@@ -1,4 +1,12 @@
-import { pgTable, uuid, numeric, varchar, text } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  uuid,
+  numeric,
+  varchar,
+  text,
+  timestamp,
+  boolean,
+} from 'drizzle-orm/pg-core'
 import { baseColumns } from './base'
 import { appraisalRatingEnum, appraisalStatusEnum } from './enums'
 import { employees } from './employees'
@@ -25,8 +33,45 @@ export const employeeAppraisals = pgTable('employee_appraisals', {
   finalScore: numeric('final_score'),
   overallRating: appraisalRatingEnum('overall_rating'),
   status: appraisalStatusEnum('status').default('draft'),
+  phase: varchar('phase', { length: 50 })
+    .notNull()
+    .$type<'planning' | 'evaluation'>()
+    .default('planning'),
   strengths: text('strengths'),
   developmentAreas: text('development_areas'),
   comments: text('comments'),
+  acknowledgedAt: timestamp('acknowledged_at'),
+  acknowledgedBy: uuid('acknowledged_by'),
+  // 🟢 PLANNING SIGNATURES
+  planningSubmittedAt: timestamp('planning_submitted_at'),
+  planningSubmittedBy: uuid('planning_submitted_by'),
+
+  planningAcknowledgedAt: timestamp('planning_acknowledged_at'),
+  planningAcknowledgedBy: uuid('planning_acknowledged_by'),
+
+  // 🔵 FINAL SIGNATURES
+  finalSubmittedAt: timestamp('final_submitted_at'),
+  finalSubmittedBy: uuid('final_submitted_by'),
+
+  finalAcknowledgedAt: timestamp('final_acknowledged_at'),
+  finalAcknowledgedBy: uuid('final_acknowledged_by'),
+
+  // 🟣 HR
+  hrApprovedAt: timestamp('hr_approved_at'),
+  hrApprovedBy: uuid('hr_approved_by'),
+
+  // OPTIONAL
+  isRejected: boolean('is_rejected').default(false),
+  rejectionReason: text('rejection_reason'),
+
+  calibratedAt: timestamp('calibrated_at'),
+  calibratedBy: uuid('calibrated_by'),
+
+  managerSignedAt: timestamp('manager_signed_at'),
+  managerSignedBy: uuid('manager_signed_by'),
+
+  employeeSignedAt: timestamp('employee_signed_at'),
+  employeeSignedBy: uuid('employee_signed_by'),
+
   ...baseColumns,
 })
