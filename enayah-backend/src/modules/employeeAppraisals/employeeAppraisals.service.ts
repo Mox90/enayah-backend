@@ -11,6 +11,7 @@ import { AppError } from '../../utils/AppError'
 
 const round = (num: number, decimals = 2) => Number(num.toFixed(decimals))
 
+// 🟣 1. LAUNCH
 export const launchAppraisal = async (
   employeeId: string,
   appraiserId: string,
@@ -25,6 +26,12 @@ export const launchAppraisal = async (
   })
 
   if (!employee) throw new AppError('Employee not found', 404)
+
+  const cycle = await db.query.appraisalCycles.findFirst({
+    where: eq(appraisalCycles.id, cycleId),
+  })
+
+  if (!cycle) throw new AppError('Cycle not found', 404)
 
   const exists = await db.query.employeeAppraisals.findFirst({
     where: and(
@@ -42,11 +49,11 @@ export const launchAppraisal = async (
       appraiserId,
       cycleId,
       status: 'draft',
+      phase: 'planning',
 
       employeeNumberSnapshot: employee.employeeNumber,
       employeeNameSnapshot: `${employee.firstName} ${employee.familyName}`,
       employeeNameArSnapshot: `${employee.firstNameAr} ${employee.familyNameAr}`,
-      //      jobTitleSnapshot: employee.positionId,
       jobTitleSnapshot: employee.position?.name ?? null,
       jobTitleArSnapshot: employee.position?.nameAr ?? null,
       departmentSnapshot: employee.department?.name ?? null,
@@ -57,7 +64,38 @@ export const launchAppraisal = async (
   return appraisal
 }
 
-export const submitAppraisal = async (appraisalId: string) => {
+// 🟣 2. MANAGER SUBMIT PLANNING
+export const submitPlanning = async (
+  appraisalId: string,
+  managerId: string,
+) => {
+  const appraisal = await db.query.employeeAppraisals.findFirst({
+    where: eq(employeeAppraisals.id, appraisalId),
+  })
+
+  if (!appraisal) throw new AppError('Appraisal not found', 404)
+
+  if (appraisal.status !== 'draft') {
+    throw new AppError('Planning already submitted', 400)
+  }
+
+  await db
+    .update(employeeAppraisals)
+    .set({
+      status: 'manager_review',
+      planningSubmittedAt: new Date(),
+      planningSubmittedBy: managerId,
+    })
+    .where(eq(employeeAppraisals.id, appraisalId))
+
+  return true
+}
+
+// 🟣 3. MANAGER SUBMIT FINAL EVALUATION
+export const submitAppraisal = async (
+  appraisalId: string,
+  managerId: string,
+) => {
   return db.transaction(async (tx) => {
     // 1️⃣ Get appraisal
     const appraisal = await tx.query.employeeAppraisals.findFirst({
@@ -65,6 +103,24 @@ export const submitAppraisal = async (appraisalId: string) => {
     })
 
     if (!appraisal) throw new AppError('Appraisal not found', 404)
+
+    // ❗ must be planning completed
+    if (appraisal.status !== 'submitted') {
+      throw new AppError('Planning must be completed first', 400)
+    }
+
+    // ❗ STRICT: require feedback before submit
+    if (
+      !appraisal.strengths ||
+      appraisal.strengths.trim().length < 10 ||
+      !appraisal.developmentAreas ||
+      appraisal.developmentAreas.trim().length < 10
+    ) {
+      throw new AppError(
+        'Strengths and development areas are required before submission',
+        400,
+      )
+    }
 
     // 2️⃣ Get goals
     const goals = await tx.query.employeeGoals.findMany({
@@ -121,7 +177,7 @@ export const submitAppraisal = async (appraisalId: string) => {
     const competenciesScore = round(competenciesScoreRaw)
     const finalScore = round(finalScoreRaw)
 
-    // 7️⃣ Overall Rating (🔥 VERY IMPORTANT)
+    // 7️⃣ Overall Rating
     let overallRating:
       | 'outstanding'
       | 'exceeds'
@@ -139,11 +195,14 @@ export const submitAppraisal = async (appraisalId: string) => {
     await tx
       .update(employeeAppraisals)
       .set({
+        phase: 'evaluation',
+        status: 'manager_review',
         goalsScore: String(goalsScore),
         competenciesScore: String(competenciesScore),
         finalScore: String(finalScore),
         overallRating,
-        status: 'submitted',
+        finalSubmittedAt: new Date(),
+        finalSubmittedBy: managerId,
       })
       .where(eq(employeeAppraisals.id, appraisalId))
 
@@ -154,6 +213,153 @@ export const submitAppraisal = async (appraisalId: string) => {
       overallRating,
     }
   })
+}
+
+// 🟣 4. EMPLOYEE ACKNOWLEDGE (PLANNING + FINAL)
+export const acknowledgeAppraisal = async (
+  appraisalId: string,
+  employeeId: string,
+) => {
+  return db.transaction(async (tx) => {
+    const appraisal = await tx.query.employeeAppraisals.findFirst({
+      where: eq(employeeAppraisals.id, appraisalId),
+    })
+
+    if (!appraisal) throw new AppError('Appraisal not found', 404)
+
+    if (appraisal.employeeId !== employeeId) {
+      throw new AppError('Not authorized', 403)
+    }
+
+    // 🟢 PLANNING ACK
+    if (appraisal.phase === 'planning') {
+      if (appraisal.status !== 'manager_review') {
+        throw new AppError('Planning not ready for acknowledgment', 400)
+      }
+
+      await tx
+        .update(employeeAppraisals)
+        .set({
+          status: 'submitted',
+          planningAcknowledgedAt: new Date(),
+          planningAcknowledgedBy: employeeId,
+        })
+        .where(eq(employeeAppraisals.id, appraisalId))
+
+      return { phase: 'planning' }
+    }
+
+    console.log({
+      appraisalEmployeeId: appraisal.employeeId,
+      requestEmployeeId: employeeId,
+    })
+
+    // 🔵 FINAL ACK
+    if (appraisal.phase === 'evaluation') {
+      if (appraisal.status !== 'manager_review') {
+        throw new AppError('Final not ready for acknowledgment', 400)
+      }
+
+      await tx
+        .update(employeeAppraisals)
+        .set({
+          status: 'hr_review',
+          finalAcknowledgedAt: new Date(),
+          finalAcknowledgedBy: employeeId,
+        })
+        .where(eq(employeeAppraisals.id, appraisalId))
+
+      return { phase: 'evaluation' }
+    }
+
+    throw new AppError('Invalid phase', 400)
+  })
+}
+
+// 🟣 5. HR APPROVAL
+export const approveAppraisal = async (appraisalId: string, hrId: string) => {
+  const appraisal = await db.query.employeeAppraisals.findFirst({
+    where: eq(employeeAppraisals.id, appraisalId),
+  })
+
+  if (!appraisal) throw new AppError('Appraisal not found', 404)
+
+  if (appraisal.status !== 'hr_review') {
+    throw new AppError('Not ready for HR approval', 400)
+  }
+
+  await db
+    .update(employeeAppraisals)
+    .set({
+      status: 'closed',
+      hrApprovedAt: new Date(),
+      hrApprovedBy: hrId,
+    })
+    .where(eq(employeeAppraisals.id, appraisalId))
+
+  return true
+}
+
+// 🟣 6. REJECT (EMPLOYEE)
+//Employee sees result → disagrees → rejects → manager edits → resubmits
+export const rejectAppraisal = async (
+  appraisalId: string,
+  employeeId: string,
+  reason: string,
+) => {
+  const appraisal = await db.query.employeeAppraisals.findFirst({
+    where: eq(employeeAppraisals.id, appraisalId),
+  })
+
+  if (!appraisal) throw new AppError('Appraisal not found', 404)
+
+  if (appraisal.employeeId !== employeeId) {
+    throw new AppError('Not authorized', 403)
+  }
+
+  if (appraisal.status !== 'manager_review') {
+    throw new AppError('Only review stage can be rejected', 400)
+  }
+
+  const newStatus = appraisal.phase === 'planning' ? 'draft' : 'submitted'
+
+  await db
+    .update(employeeAppraisals)
+    .set({
+      isRejected: true,
+      rejectionReason: reason,
+      status: newStatus, // 🔥 go back
+    })
+    .where(eq(employeeAppraisals.id, appraisalId))
+
+  return true
+}
+
+// 🟣 7. REOPEN (MANAGER)
+export const reopenAppraisal = async (
+  appraisalId: string,
+  managerId: string,
+) => {
+  const appraisal = await db.query.employeeAppraisals.findFirst({
+    where: eq(employeeAppraisals.id, appraisalId),
+  })
+
+  if (!appraisal) throw new AppError('Appraisal not found', 404)
+
+  if (!appraisal.isRejected) {
+    throw new AppError('Appraisal is not rejected', 400)
+  }
+
+  await db
+    .update(employeeAppraisals)
+    .set({
+      status: appraisal.phase === 'planning' ? 'draft' : 'submitted',
+      isRejected: false,
+      rejectionReason: null,
+    })
+    .where(eq(employeeAppraisals.id, appraisalId))
+
+  return true
 }
 
 export const updateAppraisalFeedback = async (
@@ -170,9 +376,17 @@ export const updateAppraisalFeedback = async (
 
   if (!appraisal) throw new AppError('Appraisal not found', 404)
 
-  // ❗ prevent editing after submit
-  if (appraisal.status !== 'draft') {
-    throw new AppError('Cannot update after submission', 400)
+  /*if (!appraisal.strengths || !appraisal.developmentAreas) {
+    throw new AppError(
+      'Feedback (strengths and development areas) is required before submission',
+      400,
+    )
+  }*/
+  if (!['draft', 'submitted'].includes(appraisal.status ?? '')) {
+    throw new AppError(
+      'Feedback can only be updated before final submission',
+      400,
+    )
   }
 
   await db

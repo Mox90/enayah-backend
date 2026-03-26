@@ -7,16 +7,17 @@ import { Request, Response } from 'express'
 import { appraisalRatingLabels } from '../../utils/appraisalRating'
 import { eq } from 'drizzle-orm'
 import { db, employeeAppraisals } from '../../db'
-import { appraisalFeedbackSchema } from './employeeAppraisals.schema'
+import {
+  appraisalFeedbackSchema,
+  launchAppraisalSchema,
+} from './employeeAppraisals.schema'
+import { requireManager, requireHR, requireEmployee } from '../../utils/auth'
 
 export const launchAppraisalController = asyncHandler(
   async (req: Request, res: Response) => {
-    const { employeeId, cycleId } = req.body
+    const { employeeId, cycleId } = launchAppraisalSchema.parse(req.body)
 
-    const appraiserId = req.user?.employeeId
-    if (!appraiserId) {
-      throw new AppError('Authenticated user must have an employee record', 403)
-    }
+    const appraiserId = requireManager(req)
 
     const result = await service.launchAppraisal(
       employeeId,
@@ -28,13 +29,43 @@ export const launchAppraisalController = asyncHandler(
   },
 )
 
+export const submitPlanningController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+
+    if (!id) throw new AppError('Appraisal ID required', 400)
+
+    const managerId = requireManager(req)
+
+    const result = await service.submitPlanning(id, managerId)
+
+    return successResponse(res, result, 'Planning submitted')
+  },
+)
+
+export const acknowledgeAppraisalController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+
+    if (!id) throw new AppError('Appraisal ID required', 400)
+
+    const employeeId = requireEmployee(req)
+
+    const result = await service.acknowledgeAppraisal(id, employeeId)
+
+    return successResponse(res, result, 'Appraisal acknowledged')
+  },
+)
+
 export const submitAppraisalController = asyncHandler(
   async (req: Request, res: Response) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
 
     if (!id) throw new AppError('Appraisal ID required', 400)
 
-    const result = await service.submitAppraisal(id)
+    const managerId = requireManager(req)
+
+    const result = await service.submitAppraisal(id, managerId)
 
     const label = appraisalRatingLabels[result.overallRating]
 
@@ -46,6 +77,50 @@ export const submitAppraisalController = asyncHandler(
       },
       'Appraisal submitted',
     )
+  },
+)
+
+export const approveAppraisalController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+
+    if (!id) throw new AppError('Appraisal ID required', 400)
+
+    const hrId = requireHR(req)
+
+    const result = await service.approveAppraisal(id, hrId)
+
+    return successResponse(res, result, 'Appraisal approved by HR')
+  },
+)
+
+export const rejectAppraisalController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+
+    if (!id) throw new AppError('Appraisal ID required', 400)
+
+    const employeeId = requireEmployee(req)
+
+    const { reason } = req.body
+
+    const result = await service.rejectAppraisal(id, employeeId!, reason)
+
+    return successResponse(res, result, 'Appraisal rejected')
+  },
+)
+
+export const reopenAppraisalController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+
+    if (!id) throw new AppError('Appraisal ID required', 400)
+
+    const managerId = requireManager(req)
+
+    const result = await service.reopenAppraisal(id, managerId!)
+
+    return successResponse(res, result, 'Appraisal reopened')
   },
 )
 

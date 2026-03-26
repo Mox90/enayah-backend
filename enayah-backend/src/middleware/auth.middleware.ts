@@ -9,6 +9,8 @@ export const authenticate = (
 ) => {
   const authHeader = req.headers.authorization
 
+  console.log('AUTH HEADER:', authHeader)
+
   if (!authHeader) throw new AppError('Unauthorized', 401)
 
   const [scheme, token] = authHeader.split(' ')
