@@ -1,0 +1,1 @@
+ALTER TABLE "employee_appraisals" ALTER COLUMN "phase" SET NOT NULL;

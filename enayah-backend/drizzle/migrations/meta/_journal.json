@@ -127,6 +127,20 @@
       "when": 1774525536466,
       "tag": "0017_swift_nuke",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1774528189056,
+      "tag": "0018_spicy_hellion",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1774528311011,
+      "tag": "0019_robust_colleen_wing",
+      "breakpoints": true
     }
   ]
 }

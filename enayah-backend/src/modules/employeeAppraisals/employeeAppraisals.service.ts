@@ -75,6 +75,10 @@ export const submitPlanning = async (
 
   if (!appraisal) throw new AppError('Appraisal not found', 404)
 
+  if (appraisal.appraiserId !== managerId) {
+    throw new AppError('Not authorized', 403)
+  }
+
   if (appraisal.status !== 'draft') {
     throw new AppError('Planning already submitted', 400)
   }
@@ -85,6 +89,8 @@ export const submitPlanning = async (
       status: 'manager_review',
       planningSubmittedAt: new Date(),
       planningSubmittedBy: managerId,
+      isRejected: false,
+      rejectionReason: null,
     })
     .where(eq(employeeAppraisals.id, appraisalId))
 
@@ -103,6 +109,10 @@ export const submitAppraisal = async (
     })
 
     if (!appraisal) throw new AppError('Appraisal not found', 404)
+
+    if (appraisal.appraiserId !== managerId) {
+      throw new AppError('Not authorized', 403)
+    }
 
     // ❗ must be planning completed
     if (appraisal.status !== 'submitted') {
@@ -203,6 +213,8 @@ export const submitAppraisal = async (
         overallRating,
         finalSubmittedAt: new Date(),
         finalSubmittedBy: managerId,
+        isRejected: false,
+        rejectionReason: null,
       })
       .where(eq(employeeAppraisals.id, appraisalId))
 
@@ -248,11 +260,6 @@ export const acknowledgeAppraisal = async (
 
       return { phase: 'planning' }
     }
-
-    console.log({
-      appraisalEmployeeId: appraisal.employeeId,
-      requestEmployeeId: employeeId,
-    })
 
     // 🔵 FINAL ACK
     if (appraisal.phase === 'evaluation') {
