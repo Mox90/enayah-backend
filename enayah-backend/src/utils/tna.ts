@@ -146,11 +146,11 @@ export const generateTNA = async (
       performedBy: appraisal.appraiserId,
     })
 
-    assignedTitles.push(training.title)
+    //assignedTitles.push(training.title)
   }
 
   // 🟣 7️⃣ Batch insert (safe with unique index)
-  const successfulAssignments: string[] = []
+  //const successfulAssignments: string[] = []
   for (let i = 0; i < assignmentValues.length; i++) {
     const assignment = assignmentValues[i]
     const audit = auditValues[i]
@@ -159,10 +159,11 @@ export const generateTNA = async (
       await tx.insert(trainingAssignments).values(assignment)
 
       // ✅ only mark if insert succeeds
-      successfulAssignments.push(assignment.id)
+      //successfulAssignments.push(assignment.id)
 
       // ✅ insert audit ONLY for successful insert
       await tx.insert(auditLogs).values(audit)
+      assignedTitles.push(trainingMap.get(assignment.trainingId)!.title)
     } catch (err: any) {
       if (err.code === '23505') {
         // duplicate → ignore safely

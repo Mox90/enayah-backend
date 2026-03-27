@@ -24,5 +24,9 @@ export const callAI = async (prompt: string) => {
     temperature: 0.3, // stable output
   })
 
-  return res.choices[0]?.message?.content || ''
+  const content = res.choices[0]?.message?.content?.trim()
+  if (!content) {
+    throw new Error('OpenAI returned empty response content')
+  }
+  return content
 }
