@@ -17,5 +17,7 @@ export const performanceImprovementPlans = pgTable('pips', {
   successCriteria: text('success_criteria'),
   status: pipStatusEnum('status').default('active'),
   level: pipLevelEnum('level').default('moderate').notNull(),
+  outcome: text('outcome'),
+  closedAt: timestamp('closed_at'),
   ...baseColumns,
 })

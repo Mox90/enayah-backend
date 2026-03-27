@@ -8,6 +8,8 @@ import {
   employeeGoals,
   performanceImprovementPlans,
   users,
+  trainingAssignments,
+  trainingEffectiveness,
 } from '../../db'
 import { AppError } from '../../utils/AppError'
 import { generateFeedback } from '../ai/aiAppraisal.service'
@@ -17,9 +19,15 @@ import {
   generateSMARTObjectives,
   generateSuccessCriteria,
 } from '../../utils/pip'
-import { tryCatch } from 'bullmq'
+import { predictRisk } from '../ai/aiRisk.service'
 
 const round = (num: number, decimals = 2) => Number(num.toFixed(decimals))
+
+let notificationPayload: {
+  type: 'moderate' | 'critical' | 'risk' | null
+  baseMessage?: string
+  recipients?: string[]
+} = { type: null }
 
 // 🟣 1. LAUNCH
 export const launchAppraisal = async (
@@ -171,6 +179,12 @@ export const submitAppraisal = async (
       with: { competency: true },
     })
 
+    // 🟣 🔥 AI RISK PREDICTION (READ-ONLY)
+    const risk = predictRisk({
+      goals,
+      competencies,
+    })
+
     if (!competencies.length) {
       throw new AppError('No competencies found', 400)
     }
@@ -211,6 +225,30 @@ export const submitAppraisal = async (
     const competenciesScore = round(competenciesScoreRaw)
     const finalScore = round(finalScoreRaw)
 
+    const previousAssignments = (await tx.query.trainingAssignments.findMany({
+      where: eq(trainingAssignments.employeeId, appraisal.employeeId),
+      with: { training: true },
+    })) as Array<{
+      trainingId: string
+      training: { competencyId: string }
+    }>
+
+    for (const assignment of previousAssignments) {
+      const relatedCompetency = competencies.find(
+        (c) => c.competencyId === assignment.training?.competencyId, // mapping logic
+      )
+
+      if (!relatedCompetency) continue
+
+      await tx.insert(trainingEffectiveness).values({
+        employeeId: appraisal.employeeId!,
+        trainingId: assignment.trainingId!,
+        beforeScore: '2', // you can snapshot earlier
+        afterScore: String(relatedCompetency.fulfillmentRating),
+        improvement: String(Number(relatedCompetency.fulfillmentRating) - 2),
+      })
+    }
+
     // 🟣 PIP LEVEL
     let pipLevel: 'moderate' | 'critical' = 'moderate'
     if (finalScore < 2.0) pipLevel = 'critical'
@@ -239,6 +277,23 @@ export const submitAppraisal = async (
       finalScore < 3.0 || lowGoals.length > 0 || lowCompetencies.length > 0
 
     let pipCreated = false
+
+    const existingPIP = await tx.query.performanceImprovementPlans.findFirst({
+      where: eq(performanceImprovementPlans.appraisalId, appraisalId),
+    })
+
+    if (existingPIP && existingPIP.status !== 'completed') {
+      const improved = finalScore >= 3
+
+      await tx
+        .update(performanceImprovementPlans)
+        .set({
+          outcome: improved ? 'successful' : 'failed',
+          status: 'completed',
+          closedAt: new Date(),
+        })
+        .where(eq(performanceImprovementPlans.id, existingPIP.id))
+    }
 
     // 🟣 8️⃣ Create PIP
     if (shouldCreatePIP) {
@@ -365,11 +420,15 @@ Rating: ${overallRating}
       title:
         notificationPayload.type === 'critical'
           ? '🚨 CRITICAL PERFORMANCE ALERT'
-          : 'Performance Improvement Plan Created',
+          : notificationPayload.type === 'moderate'
+            ? 'Performance Improvement Plan Created'
+            : '⚠️ High Risk Employee',
+
       message:
         notificationPayload.type === 'critical'
           ? notificationPayload.baseMessage + '\nImmediate attention required.'
           : notificationPayload.baseMessage!,
+
       recipients: notificationPayload.recipients,
     })
   }

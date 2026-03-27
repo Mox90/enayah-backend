@@ -176,6 +176,13 @@
       "when": 1774639648149,
       "tag": "0024_tricky_hammerhead",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1774649576997,
+      "tag": "0025_confused_molten_man",
+      "breakpoints": true
     }
   ]
 }
