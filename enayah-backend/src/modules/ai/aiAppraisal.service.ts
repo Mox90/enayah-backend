@@ -1,3 +1,7 @@
+import { callAI } from './aiClient'
+import { withRetry } from './aiRetry'
+import { TrainingMatch, trainingMatchSchema } from './aiValidator'
+
 type Goal = {
   title: string
   fulfillmentRating: number | null
@@ -81,8 +85,8 @@ export const matchTrainingsWithAI = async ({
 }: {
   goals: any[]
   competencies: any[]
-  trainings: any[]
-}) => {
+  trainings: { id: string; title: string }[]
+}): Promise<TrainingMatch> => {
   const prompt = `
 You are an HR expert.
 
@@ -98,25 +102,28 @@ AVAILABLE TRAININGS:
 ${trainings.map((t) => `${t.id}: ${t.title}`).join('\n')}
 
 Select top 5 most relevant trainings.
-Return JSON:
+Return STRICT JSON only:
 [
   {
-    "trainingId": "...",
-    "reason": "Why this training is relevant"
+    "trainingId": "uuid",
+    "reason": "clear justification"
   }
 ]
 `
 
-  // 🔥 Replace with real AI later
-  const fakeResponse = JSON.stringify(
-    trainings.slice(0, 3).map((t) => ({
-      trainingId: t.id,
-      reason: `Recommended due to low performance related to "${t.title}"`,
-    })),
-  )
+  try {
+    const raw = await withRetry(() => callAI(prompt))
 
-  return JSON.parse(fakeResponse) as {
-    trainingId: string
-    reason: string
-  }[]
+    const parsed = JSON.parse(raw)
+
+    return trainingMatchSchema.parse(parsed)
+  } catch (err) {
+    console.error('AI FAILED → fallback triggered', err)
+
+    // 🔥 SAFE FALLBACK
+    return trainings.slice(0, 3).map((t) => ({
+      trainingId: t.id,
+      reason: `Fallback: related to ${t.title}`,
+    }))
+  }
 }

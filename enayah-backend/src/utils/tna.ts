@@ -1,23 +1,37 @@
-import { eq, and, InferSelectModel, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
+import { randomUUID } from 'crypto'
 import {
   trainings,
-  trainingAssignments,
   roleCompetencies,
+  trainingAssignments,
   auditLogs,
-} from '../db'
+} from '../db/schema'
 import { matchTrainingsWithAI } from '../modules/ai/aiAppraisal.service'
 import {
   getHorizonFromRating,
   getPriorityFromHorizon,
   getDueDate,
 } from './tna.helpers'
-import { logFieldChange } from '../modules/audit/audit.service'
-import { randomUUID } from 'crypto'
 
-type Training = InferSelectModel<typeof trainings>
-type RoleCompetency = InferSelectModel<typeof roleCompetencies>
+// 🔹 Minimal local types (clean + avoids implicit any)
+type AIResult = {
+  trainingId: string
+  reason: string
+}
 
-export const isString = (val: string | null): val is string => val !== null
+type RoleCompetency = {
+  competencyId: string
+}
+
+type TrainingAssignmentRow = {
+  trainingId: string
+}
+
+type Training = {
+  id: string
+  title: string
+  competencyId: string
+}
 
 export const generateTNA = async (
   tx: any,
@@ -25,15 +39,22 @@ export const generateTNA = async (
   lowGoals: any[],
   lowCompetencies: any[],
 ) => {
+  // 🟣 0️⃣ Early exit (IMPORTANT)
   if (!lowGoals.length && !lowCompetencies.length) {
     return []
   }
-  // 🟣 1️⃣ Fetch trainings
-  const allTrainings: Training[] = await tx.query.trainings.findMany()
 
-  // 🟣 2️⃣ Role-based filtering
+  // 🟣 1️⃣ Fetch trainings (exclude deleted)
+  const allTrainings: Training[] = await tx.query.trainings.findMany({
+    where: eq(trainings.isDeleted, false),
+  })
+
+  // 🟣 2️⃣ Role-based filtering (exclude deleted)
   const roleComps: RoleCompetency[] = await tx.query.roleCompetencies.findMany({
-    where: eq(roleCompetencies.role, appraisal.jobTitleSnapshot),
+    where: and(
+      eq(roleCompetencies.role, appraisal.jobTitleSnapshot),
+      eq(roleCompetencies.isDeleted, false),
+    ),
   })
 
   const allowedCompetencyIds = roleComps.map((r) => r.competencyId)
@@ -46,27 +67,33 @@ export const generateTNA = async (
       : allTrainings
 
   // 🟣 3️⃣ AI matching
-  const aiResults = await matchTrainingsWithAI({
+  const aiResults: AIResult[] = await matchTrainingsWithAI({
     goals: lowGoals,
     competencies: lowCompetencies,
     trainings: filteredTrainings,
   })
 
-  const trainingIds = aiResults.map((r) => r.trainingId)
+  // 🟣 3.1️⃣ Deduplicate AI results (CRITICAL)
+  const uniqueAIResults: AIResult[] = Array.from(
+    new Map(aiResults.map((r) => [r.trainingId, r])).values(),
+  )
 
+  const trainingIds = uniqueAIResults.map((r) => r.trainingId)
   if (trainingIds.length === 0) return []
 
-  // 🟣 4️⃣ Fetch existing assignments (ONE QUERY)
-  const existingAssignments = await tx.query.trainingAssignments.findMany({
-    where: and(
-      eq(trainingAssignments.employeeId, appraisal.employeeId),
-      inArray(trainingAssignments.trainingId, trainingIds),
-    ),
-  })
+  // 🟣 4️⃣ Fetch existing assignments (exclude deleted)
+  const existingAssignments: TrainingAssignmentRow[] =
+    await tx.query.trainingAssignments.findMany({
+      where: and(
+        eq(trainingAssignments.employeeId, appraisal.employeeId),
+        inArray(trainingAssignments.trainingId, trainingIds),
+        eq(trainingAssignments.isDeleted, false),
+      ),
+    })
 
   const existingIds = new Set(existingAssignments.map((e) => e.trainingId))
 
-  // 🟣 5️⃣ Prepare batch inserts
+  // 🟣 5️⃣ Compute horizon + priority
   const worstRating = Math.min(
     ...lowCompetencies.map((c) => Number(c.fulfillmentRating)),
     ...lowGoals.map((g) => Number(g.fulfillmentRating)),
@@ -75,14 +102,15 @@ export const generateTNA = async (
   const horizon = getHorizonFromRating(worstRating)
   const priority = getPriorityFromHorizon(horizon)
 
+  // 🟣 6️⃣ Prepare batch inserts
   const assignmentValues: any[] = []
   const auditValues: any[] = []
   const assignedTitles: string[] = []
 
-  // 🔥 Map trainings for fast lookup
+  // 🔥 Map trainings for O(1) lookup
   const trainingMap = new Map(filteredTrainings.map((t) => [t.id, t]))
 
-  for (const result of aiResults) {
+  for (const result of uniqueAIResults) {
     if (existingIds.has(result.trainingId)) continue
 
     const training = trainingMap.get(result.trainingId)
@@ -98,14 +126,13 @@ export const generateTNA = async (
       horizon,
       priority,
       dueDate: getDueDate(horizon),
-      aiReason: result.reason,
+      aiReason: result.reason, // ✅ AI explainability
     })
 
-    // 🟣 Audit batch
+    // 🟣 Audit batch (FIXED: correct recordId)
     auditValues.push({
-      recordedId: assignmentId,
       tableName: 'training_assignments',
-      recordId: training.id,
+      recordId: assignmentId, // ✅ correct
       fieldName: 'assignment',
       oldValue: null,
       newValue: {
@@ -122,9 +149,16 @@ export const generateTNA = async (
     assignedTitles.push(training.title)
   }
 
-  // 🟣 6️⃣ Batch insert (VERY IMPORTANT)
+  // 🟣 7️⃣ Batch insert (safe with unique index)
   if (assignmentValues.length > 0) {
-    await tx.insert(trainingAssignments).values(assignmentValues)
+    try {
+      await tx.insert(trainingAssignments).values(assignmentValues)
+    } catch (err: any) {
+      if (err.code !== '23505') {
+        throw err
+      }
+      // ✅ ignore duplicate race condition
+    }
   }
 
   if (auditValues.length > 0) {
