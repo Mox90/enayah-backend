@@ -66,6 +66,10 @@ export const generateTNA = async (
         )
       : allTrainings
 
+  if (filteredTrainings.length === 0) {
+    return []
+  }
+
   // 🟣 3️⃣ AI matching
   const aiResults: AIResult[] = await matchTrainingsWithAI({
     goals: lowGoals,
@@ -94,10 +98,19 @@ export const generateTNA = async (
   const existingIds = new Set(existingAssignments.map((e) => e.trainingId))
 
   // 🟣 5️⃣ Compute horizon + priority
-  const worstRating = Math.min(
-    ...lowCompetencies.map((c) => Number(c.fulfillmentRating)),
-    ...lowGoals.map((g) => Number(g.fulfillmentRating)),
+  //const worstRating = Math.min(
+  //  ...lowCompetencies.map((c) => Number(c.fulfillmentRating)),
+  //  ...lowGoals.map((g) => Number(g.fulfillmentRating)),
+  //)
+  const ratings = [...lowCompetencies, ...lowGoals].map((item) =>
+    Number(item.fulfillmentRating),
   )
+
+  if (ratings.some((rating) => !Number.isFinite(rating))) {
+    throw new Error('generateTNA received a non-numeric fulfillmentRating')
+  }
+
+  const worstRating = Math.min(...ratings)
 
   const horizon = getHorizonFromRating(worstRating)
   const priority = getPriorityFromHorizon(horizon)
@@ -162,8 +175,8 @@ export const generateTNA = async (
       //successfulAssignments.push(assignment.id)
 
       // ✅ insert audit ONLY for successful insert
-      await tx.insert(auditLogs).values(audit)
-      assignedTitles.push(trainingMap.get(assignment.trainingId)!.title)
+      //await tx.insert(auditLogs).values(audit)
+      //assignedTitles.push(trainingMap.get(assignment.trainingId)!.title)
     } catch (err: any) {
       if (err.code === '23505') {
         // duplicate → ignore safely
@@ -171,6 +184,9 @@ export const generateTNA = async (
       }
       throw err
     }
+
+    await tx.insert(auditLogs).values(audit)
+    assignedTitles.push(trainingMap.get(assignment.trainingId)!.title)
   }
 
   return assignedTitles
