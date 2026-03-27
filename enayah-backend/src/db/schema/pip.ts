@@ -16,6 +16,6 @@ export const performanceImprovementPlans = pgTable('pips', {
   assignedTo: uuid('assigned_to'), // manager
   successCriteria: text('success_criteria'),
   status: pipStatusEnum('status').default('active'),
-  level: pipLevelEnum('level').default('moderate'),
+  level: pipLevelEnum('level').default('moderate').notNull(),
   ...baseColumns,
 })

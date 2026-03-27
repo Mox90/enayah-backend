@@ -12,6 +12,7 @@ import {
   getDueDate,
 } from './tna.helpers'
 import { logFieldChange } from '../modules/audit/audit.service'
+import { randomUUID } from 'crypto'
 
 type Training = InferSelectModel<typeof trainings>
 type RoleCompetency = InferSelectModel<typeof roleCompetencies>
@@ -24,6 +25,9 @@ export const generateTNA = async (
   lowGoals: any[],
   lowCompetencies: any[],
 ) => {
+  if (!lowGoals.length && !lowCompetencies.length) {
+    return []
+  }
   // 🟣 1️⃣ Fetch trainings
   const allTrainings: Training[] = await tx.query.trainings.findMany()
 
@@ -84,17 +88,22 @@ export const generateTNA = async (
     const training = trainingMap.get(result.trainingId)
     if (!training) continue
 
+    const assignmentId = randomUUID()
+
     // 🟣 Assignment batch
     assignmentValues.push({
+      id: assignmentId,
       employeeId: appraisal.employeeId,
       trainingId: training.id,
       horizon,
       priority,
       dueDate: getDueDate(horizon),
+      aiReason: result.reason,
     })
 
     // 🟣 Audit batch
     auditValues.push({
+      recordedId: assignmentId,
       tableName: 'training_assignments',
       recordId: training.id,
       fieldName: 'assignment',

@@ -1,4 +1,4 @@
-import { pgTable, uuid, timestamp, text } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, timestamp, text, varchar } from 'drizzle-orm/pg-core'
 import { baseColumns } from './base'
 import { trainings } from './trainings'
 import { employees } from './employees'
@@ -15,6 +15,7 @@ export const trainingAssignments = pgTable('training_assignments', {
     .references(() => trainings.id),
   priority: text('priority').$type<'high' | 'medium' | 'low'>(),
   aiReason: text('ai_reason'),
+  horizon: varchar('horizon', { length: 50 }),
   dueDate: timestamp('due_date'),
 
   completedAt: timestamp('completed_at'),

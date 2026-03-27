@@ -1,4 +1,7 @@
-const generateSMARTObjectives = (lowGoals: any[], lowCompetencies: any[]) => {
+export const generateSMARTObjectives = (
+  lowGoals: any[],
+  lowCompetencies: any[],
+) => {
   const objectives: string[] = []
 
   for (const g of lowGoals) {
@@ -16,7 +19,7 @@ const generateSMARTObjectives = (lowGoals: any[], lowCompetencies: any[]) => {
   return objectives
 }
 
-const generateSuccessCriteria = () => {
+export const generateSuccessCriteria = () => {
   return `
 - Achieve minimum rating of 3 in all identified areas
 - Demonstrate consistent performance improvement over review period

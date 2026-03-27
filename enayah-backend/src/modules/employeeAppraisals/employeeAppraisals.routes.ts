@@ -48,7 +48,7 @@ router.post(
   controller.acknowledgeAppraisalController,
 )
 
-router.get(
+router.post(
   '/:id/generate-feedback',
   allowRoles('employeeAppraisals', 'read'),
   controller.generateFeedbackController,

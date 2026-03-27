@@ -1,0 +1,1 @@
+ALTER TABLE "pips" ALTER COLUMN "level" SET NOT NULL;

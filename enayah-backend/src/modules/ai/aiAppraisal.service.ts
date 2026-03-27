@@ -52,14 +52,18 @@ export const generateAIInsights = async (data: {
   goals: any[]
   competencies: any[]
 }) => {
-  const lowGoals = data.goals.filter((g) => g.fulfillmentRating <= 2)
-  const highGoals = data.goals.filter((g) => g.fulfillmentRating >= 4)
+  const lowGoals = data.goals.filter(
+    (g) => g.fulfillmentRating != null && g.fulfillmentRating <= 2,
+  )
+  const highGoals = data.goals.filter(
+    (g) => g.fulfillmentRating != null && g.fulfillmentRating >= 4,
+  )
 
   const lowCompetencies = data.competencies.filter(
-    (c) => c.fulfillmentRating <= 2,
+    (c) => c.fulfillmentRating != null && c.fulfillmentRating <= 2,
   )
   const highCompetencies = data.competencies.filter(
-    (c) => c.fulfillmentRating >= 4,
+    (c) => c.fulfillmentRating != null && c.fulfillmentRating >= 4,
   )
 
   return {

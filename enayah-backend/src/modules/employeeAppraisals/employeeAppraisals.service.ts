@@ -12,8 +12,12 @@ import {
 import { AppError } from '../../utils/AppError'
 import { generateFeedback } from '../ai/aiAppraisal.service'
 import { notify } from '../notifications/notification.service'
-import { generateTNA } from '../../utils/tna'
 import { enqueueTNAJob } from '../queue/tna.job'
+import {
+  generateSMARTObjectives,
+  generateSuccessCriteria,
+} from '../../utils/pip'
+import { tryCatch } from 'bullmq'
 
 const round = (num: number, decimals = 2) => Number(num.toFixed(decimals))
 
@@ -256,24 +260,26 @@ export const submitAppraisal = async (
 
         const durationDays = finalScore < 2 ? 120 : 90
 
-        await tx.insert(performanceImprovementPlans).values({
-          appraisalId,
-          objectives,
-          successCriteria,
-          level: pipLevel,
-          startDate: new Date(),
-          endDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000),
-        })
+        try {
+          await tx.insert(performanceImprovementPlans).values({
+            appraisalId,
+            objectives,
+            successCriteria,
+            level: pipLevel,
+            startDate: new Date(),
+            endDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000),
+          })
 
-        pipCreated = true
+          pipCreated = true
+        } catch (err: any) {
+          if (err.code === '23505') {
+            pipCreated = false
+          } else {
+            throw err
+          }
+        }
       }
     }
-
-    // 🟣 9️⃣ Generate TNA
-    //await generateTNA(tx, appraisal, lowGoals, lowCompetencies)
-    await enqueueTNAJob({
-      appraisalId,
-    })
 
     // 🟣 Prepare notification (DO NOT SEND YET)
     if (pipCreated) {
@@ -367,6 +373,12 @@ Rating: ${overallRating}
       recipients: notificationPayload.recipients,
     })
   }
+
+  // 🟣 9️⃣ Generate TNA
+  //await generateTNA(tx, appraisal, lowGoals, lowCompetencies)
+  await enqueueTNAJob({
+    appraisalId,
+  })
 
   return result
 }
