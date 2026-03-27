@@ -141,6 +141,41 @@
       "when": 1774528311011,
       "tag": "0019_robust_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1774611179794,
+      "tag": "0020_stormy_lethal_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774631841577,
+      "tag": "0021_rapid_midnight",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774634748663,
+      "tag": "0022_grey_pepper_potts",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1774639486564,
+      "tag": "0023_damp_harrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1774639648149,
+      "tag": "0024_tricky_hammerhead",
+      "breakpoints": true
     }
   ]
 }

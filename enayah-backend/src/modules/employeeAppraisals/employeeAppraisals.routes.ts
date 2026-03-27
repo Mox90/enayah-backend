@@ -3,6 +3,7 @@ import { authenticate } from '../../middleware/auth.middleware'
 import { allowRoles } from '../../middleware/rbac.middleware'
 import * as controller from './employeeAppraisals.controller'
 import { enforceAppraisalPhase } from '../../middleware/appraisalPhase.middleware'
+import { authorizeAppraisalAccess } from '../../middleware/appraisalAccess.middleware'
 
 const router = Router()
 
@@ -46,6 +47,13 @@ router.post(
   allowRoles('employeeAppraisals', 'update'),
   enforceAppraisalPhase('acknowledge'), // 🔥 unified
   controller.acknowledgeAppraisalController,
+)
+
+router.post(
+  '/:id/generate-feedback',
+  allowRoles('employeeAppraisals', 'read'),
+  authorizeAppraisalAccess(),
+  controller.generateFeedbackController,
 )
 
 /**

@@ -32,3 +32,5 @@ export const appraisalRatingEnum = pgEnum('appraisal_rating', [
   'needs_improvement',
   'unsatisfactory',
 ])
+
+export const pipLevelEnum = pgEnum('pip_level', ['moderate', 'critical'])

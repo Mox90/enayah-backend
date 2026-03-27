@@ -152,3 +152,15 @@ export const updateFeedbackController = asyncHandler(
     return successResponse(res, result, 'Feedback updated')
   },
 )
+
+export const generateFeedbackController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+
+    if (!id) throw new AppError('Appraisal ID required', 400)
+
+    const result = await service.generateAppraisalFeedback(id)
+
+    return successResponse(res, result, 'AI feedback generated')
+  },
+)

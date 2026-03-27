@@ -1,0 +1,1 @@
+ALTER TABLE "training_assignments" ADD COLUMN "ai_reason" text;
