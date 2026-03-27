@@ -150,19 +150,26 @@ export const generateTNA = async (
   }
 
   // 🟣 7️⃣ Batch insert (safe with unique index)
-  if (assignmentValues.length > 0) {
-    try {
-      await tx.insert(trainingAssignments).values(assignmentValues)
-    } catch (err: any) {
-      if (err.code !== '23505') {
-        throw err
-      }
-      // ✅ ignore duplicate race condition
-    }
-  }
+  const successfulAssignments: string[] = []
+  for (let i = 0; i < assignmentValues.length; i++) {
+    const assignment = assignmentValues[i]
+    const audit = auditValues[i]
 
-  if (auditValues.length > 0) {
-    await tx.insert(auditLogs).values(auditValues)
+    try {
+      await tx.insert(trainingAssignments).values(assignment)
+
+      // ✅ only mark if insert succeeds
+      successfulAssignments.push(assignment.id)
+
+      // ✅ insert audit ONLY for successful insert
+      await tx.insert(auditLogs).values(audit)
+    } catch (err: any) {
+      if (err.code === '23505') {
+        // duplicate → ignore safely
+        continue
+      }
+      throw err
+    }
   }
 
   return assignedTitles

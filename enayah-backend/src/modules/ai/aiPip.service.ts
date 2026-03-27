@@ -1,5 +1,11 @@
 import { callAI } from './aiClient'
 import { withRetry } from './aiRetry'
+import { z } from 'zod'
+
+const pipContentSchema = z.object({
+  objectives: z.string(),
+  successCriteria: z.string(),
+})
 
 export const generatePIPContent = async ({
   lowGoals,
@@ -26,7 +32,8 @@ Return:
 
   try {
     const raw = await withRetry(() => callAI(prompt))
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    return pipContentSchema.parse(parsed)
   } catch {
     return {
       objectives: 'Improve performance in identified weak areas',

@@ -6,6 +6,7 @@ import { AppError } from '../utils/AppError'
 export const authorizeAppraisalAccess = () => {
   return async (req: Request, _res: Response, next: NextFunction) => {
     const appraisalId = req.params.id
+    if (!appraisalId) throw new AppError('Appraisal ID required', 400)
     const user = req.user!
 
     const appraisal = await db.query.employeeAppraisals.findFirst({
