@@ -48,6 +48,12 @@ router.post(
   controller.acknowledgeAppraisalController,
 )
 
+router.get(
+  '/:id/generate-feedback',
+  allowRoles('employeeAppraisals', 'read'),
+  controller.generateFeedbackController,
+)
+
 /**
  * 🟣 SUBMIT FINAL EVALUATION
  */
