@@ -185,7 +185,7 @@ Training:
 
   try {
     const raw = await callAI(prompt)
-    console.log('🔥 RAW AI:', raw)
+    //console.log('🔥 RAW AI:', raw)
 
     const jsonStart = raw.indexOf('{')
     const jsonEnd = raw.lastIndexOf('}') + 1
@@ -231,8 +231,8 @@ Training:
 
       needsPIP,
 
-      pip: needsPIP ? pip : null,
-      translations: parsed.translations || null,
+      pip: needsPIP ? pip : undefined,
+      translations: parsed.translations ?? undefined,
     }
   } catch (err) {
     console.error('AI FAILED → using fallback')

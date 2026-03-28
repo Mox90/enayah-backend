@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db, performanceImprovementPlans, PipStatus } from '../../db'
 
 export const createPIP = async (
@@ -51,7 +51,12 @@ export const updatePIPProgress = async (
   const [pip] = await db
     .select()
     .from(performanceImprovementPlans)
-    .where(eq(performanceImprovementPlans.appraisalId, appraisalId))
+    .where(
+      and(
+        eq(performanceImprovementPlans.appraisalId, appraisalId),
+        eq(performanceImprovementPlans.isDeleted, false),
+      ),
+    )
     .limit(1)
 
   if (!pip) {
@@ -113,7 +118,13 @@ export const getPIPByAppraisal = async (appraisalId: string) => {
   const result = await db
     .select()
     .from(performanceImprovementPlans)
-    .where(eq(performanceImprovementPlans.appraisalId, appraisalId))
+    .where(
+      and(
+        eq(performanceImprovementPlans.appraisalId, appraisalId),
+        eq(performanceImprovementPlans.isDeleted, false),
+      ),
+    )
+
     .limit(1)
 
   return result[0] || null

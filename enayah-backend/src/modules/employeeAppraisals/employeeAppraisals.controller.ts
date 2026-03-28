@@ -179,8 +179,8 @@ export const generateFeedbackController = async (
   res: Response,
 ) => {
   try {
-    console.log('🔥 CONTROLLER HIT')
-    console.log('QUERY:', req.query)
+    //console.log('🔥 CONTROLLER HIT')
+    //console.log('QUERY:', req.query)
 
     //const { id } = req.params
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
@@ -224,7 +224,15 @@ export const generateFeedbackController = async (
     // 🔹 4. Compute scores
     const goalsScore = computeGoalsScore(goals)
     const competenciesScore = computeCompetenciesScore(competencies)
-    const finalScore = (goalsScore + competenciesScore) / 2
+    //const finalScore = (goalsScore + competenciesScore) / 2
+
+    const cycle = await appraisalService.getCycleById(appraisal.cycleId)
+
+    // fallback if missing
+    const goalsWeight = Number(cycle?.goalsWeight ?? 0.5)
+    const competenciesWeight = Number(cycle?.competenciesWeight ?? 0.5)
+    const finalScore =
+      goalsScore * goalsWeight + competenciesScore * competenciesWeight
 
     console.log({
       goalsScore,
@@ -244,13 +252,20 @@ export const generateFeedbackController = async (
     // 🔹 5. Risk detection
     const risk = predictRisk({ goals, competencies })
 
-    const confidenceScore = Number(
+    /*const confidenceScore = Number(
       (
         (goals.filter((g: any) => g.fulfillmentRating != null).length +
           competencies.filter((c: any) => c.fulfillmentRating != null).length) /
         (goals.length + competencies.length)
       ).toFixed(2),
-    )
+    )*/
+
+    const totalItems = goals.length + competencies.length
+    const ratedItems =
+      goals.filter((g: any) => g.fulfillmentRating != null).length +
+      competencies.filter((c: any) => c.fulfillmentRating != null).length
+    const confidenceScore =
+      totalItems > 0 ? Number((ratedItems / totalItems).toFixed(2)) : 0
 
     // 🔹 6. Build AI payload
     const payload = {
@@ -282,38 +297,43 @@ export const generateFeedbackController = async (
     // 🔥 ADD IT HERE (RIGHT AFTER AI RESPONSE)
     aiResponse = ensurePIP(aiResponse)
 
-    const existingPIP = await getPIPByAppraisal(id)
+    await db.transaction(async (tx) => {
+      const existingPIP = await getPIPByAppraisal(id)
 
-    if (!existingPIP && aiResponse.needsPIP && aiResponse.pip) {
-      const pip = aiResponse.pip
+      if (!existingPIP && aiResponse.needsPIP && aiResponse.pip) {
+        const pip = aiResponse.pip
 
-      const objectives = pip.objectives.join('\n')
-      const actionPlan = pip.actions.join('\n')
-      const successCriteria = pip.successMetrics.join('\n')
+        const objectives = pip.objectives.join('\n')
+        const actionPlan = pip.actions.join('\n')
+        const successCriteria = pip.successMetrics.join('\n')
 
-      const level = risk.riskLevel === 'high' ? 'critical' : 'moderate'
+        const level = risk.riskLevel === 'high' ? 'critical' : 'moderate'
 
-      const durationDays = parseInt(pip.timeline) || 60
+        const durationDays = parseInt(pip.timeline, 10) || 60
 
-      // ⚠️ IMPORTANT: you are NOT using tx yet
-      await createPIP(db, {
-        appraisalId: id,
-        objectives,
-        actionPlan,
-        successCriteria,
-        level,
-        durationDays,
-      })
-    }
+        await createPIP(tx, {
+          appraisalId: id,
+          objectives,
+          actionPlan,
+          successCriteria,
+          level,
+          durationDays,
+        })
+      }
 
-    // 🔹 8. Save to DB
-    await service.updateAppraisal(id, {
-      strengths: aiResponse.strengths,
-      developmentAreas: aiResponse.developmentAreas,
-      comments: aiResponse.needsPIP
-        ? 'Recommended for Performance Improvement Plan (PIP)'
-        : 'Satisfactory performance',
-      pip: aiResponse.needsPIP ? aiResponse.pip : null,
+      // 🔥 👉 PUT IT HERE (INSIDE SAME TRANSACTION)
+      await tx
+        .update(employeeAppraisals)
+        .set({
+          strengths: aiResponse.strengths,
+          developmentAreas: aiResponse.developmentAreas,
+          comments: aiResponse.needsPIP
+            ? 'Recommended for Performance Improvement Plan (PIP)'
+            : 'Satisfactory performance',
+          pip: aiResponse.needsPIP ? aiResponse.pip : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(employeeAppraisals.id, id))
     })
 
     // 🔹 9. Return response

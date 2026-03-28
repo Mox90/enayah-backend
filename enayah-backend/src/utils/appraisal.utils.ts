@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db, employeeCompetencies, employeeGoals } from '../db'
 
 export const computeGoalsScore = (goals: any[]) => {
@@ -13,14 +13,24 @@ export const getGoalsByAppraisalId = async (appraisalId: string) => {
   return await db
     .select()
     .from(employeeGoals)
-    .where(eq(employeeGoals.appraisalId, appraisalId))
+    .where(
+      and(
+        eq(employeeGoals.appraisalId, appraisalId),
+        eq(employeeGoals.isDeleted, false),
+      ),
+    )
 }
 
 export const getCompetenciesByAppraisalId = async (appraisalId: string) => {
   return await db
     .select()
     .from(employeeCompetencies)
-    .where(eq(employeeCompetencies.appraisalId, appraisalId))
+    .where(
+      and(
+        eq(employeeCompetencies.appraisalId, appraisalId),
+        eq(employeeCompetencies.isDeleted, false),
+      ),
+    )
 }
 
 /*export const predictRisk = ({ goals, competencies }: any) => {
