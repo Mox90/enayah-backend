@@ -77,5 +77,7 @@ export const employeeAppraisals = pgTable('employee_appraisals', {
   employeeSignedAt: timestamp('employee_signed_at'),
   employeeSignedBy: uuid('employee_signed_by'),
 
+  aiGenerated: boolean('ai_generated').default(false),
+
   ...baseColumns,
 })

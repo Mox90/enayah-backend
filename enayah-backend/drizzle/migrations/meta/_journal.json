@@ -211,6 +211,13 @@
       "when": 1774698599228,
       "tag": "0029_polite_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1774700432961,
+      "tag": "0030_equal_nextwave",
+      "breakpoints": true
     }
   ]
 }

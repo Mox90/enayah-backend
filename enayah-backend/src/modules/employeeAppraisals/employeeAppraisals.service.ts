@@ -152,9 +152,9 @@ export const submitAppraisal = async (
     // ❗ STRICT: require feedback before submit
     if (
       !appraisal.strengths ||
-      appraisal.strengths.trim().length < 10 ||
+      appraisal.strengths.length < 10 ||
       !appraisal.developmentAreas ||
-      appraisal.developmentAreas.trim().length < 10
+      appraisal.developmentAreas.length < 10
     ) {
       throw new AppError(
         'Strengths and development areas are required before submission',
@@ -591,8 +591,8 @@ export const reopenAppraisal = async (
 export const updateAppraisalFeedback = async (
   appraisalId: string,
   data: {
-    strengths: string
-    developmentAreas: string
+    strengths: string[]
+    developmentAreas: string[]
     comments?: string
   },
 ) => {
