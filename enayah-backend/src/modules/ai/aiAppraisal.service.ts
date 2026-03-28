@@ -1,3 +1,4 @@
+import { AIInsights } from '../../types/aiTypes'
 import { callAI } from './aiClient'
 import { withRetry } from './aiRetry'
 import { TrainingMatch, trainingMatchSchema } from './aiValidator'
@@ -52,29 +53,191 @@ export const generateFeedback = (data: {
   }
 }
 
-export const generateAIInsights = async (data: {
-  goals: any[]
-  competencies: any[]
-}) => {
-  const lowGoals = data.goals.filter(
-    (g) => g.fulfillmentRating != null && g.fulfillmentRating <= 2,
-  )
-  const highGoals = data.goals.filter(
-    (g) => g.fulfillmentRating != null && g.fulfillmentRating >= 4,
+export const generateAIInsights = async (payload: any): Promise<AIInsights> => {
+  // 🔹 1. FALLBACK LOGIC (your original logic)
+  const lowGoals = payload.goals.filter(
+    (g: any) => g.fulfillmentRating != null && g.fulfillmentRating <= 2,
   )
 
-  const lowCompetencies = data.competencies.filter(
-    (c) => c.fulfillmentRating != null && c.fulfillmentRating <= 2,
-  )
-  const highCompetencies = data.competencies.filter(
-    (c) => c.fulfillmentRating != null && c.fulfillmentRating >= 4,
+  const highGoals = payload.goals.filter(
+    (g: any) => g.fulfillmentRating != null && g.fulfillmentRating >= 4,
   )
 
-  return {
-    strengths: highGoals.map((g) => g.title),
-    developmentAreas: lowGoals.map((g) => g.title),
-    trainingNeeds: lowCompetencies.map((c) => c.competencyId),
+  const lowCompetencies = payload.competencies.filter(
+    (c: any) => c.fulfillmentRating != null && c.fulfillmentRating <= 2,
+  )
+
+  const fallback = {
+    strengths: highGoals.map((g: any) => g.title),
+    developmentAreas: lowGoals.map((g: any) => g.title),
+    trainingNeeds: [
+      'Clinical documentation standards',
+      'Patient safety and quality improvement',
+    ],
     needsPIP: lowGoals.length > 0 || lowCompetencies.length > 0,
+  }
+
+  // 🔹 2. AI PROMPT
+  const prompt = `
+You are a senior HR performance evaluator.
+
+Analyze employee performance using ratings and identified risk factors.
+
+IMPORTANT:
+- DO NOT repeat goal titles directly
+- Convert them into professional performance insights
+- Use risk factors to explain WHY improvement is needed
+- Explain strengths and weaknesses in meaningful terms
+- Focus on behavior and performance, not labels
+
+If needsPIP is true, you MUST generate a detailed Performance Improvement Plan (PIP).
+
+DO NOT skip the PIP.
+
+PIP must include:
+- objectives (specific weak areas based on low ratings)
+- actions (clear steps to improve)
+- timeline (30–60 days)
+- successMetrics (measurable outcomes)
+
+Example:
+
+{
+  "pip": {
+    "objectives": [
+      "Improve documentation accuracy",
+      "Reduce medication errors"
+    ],
+    "actions": [
+      "Attend clinical documentation training",
+      "Follow medication safety checklist"
+    ],
+    "timeline": "60 days",
+    "successMetrics": [
+      "Achieve 98% documentation accuracy",
+      "Reduce medication errors by 20%"
+    ]
+  }
+}
+
+Return JSON with "pip" field ONLY if needsPIP = true.
+
+DATA:
+
+Goals:
+${payload.goals.map((g: any) => `- ${g.title} (Rating: ${g.rating})`).join('\n')}
+
+Competencies:
+${payload.competencies.map((c: any) => `- Rating: ${c.rating}`).join('\n')}
+
+Risk Level: ${payload.riskLevel}
+
+Risk Factors:
+${payload.riskReasons.map((r: string) => `- ${r}`).join('\n')}
+
+Return STRICT JSON:
+
+{
+  "strengths": [],
+  "developmentAreas": [],
+  "trainingNeeds": [],
+  "needsPIP": boolean,
+  "pip": {
+    "objectives": [],
+    "actions": [],
+    "timeline": "",
+    "successMetrics": []
+  },
+
+  "translations": {
+    "strengths_ar": [],
+    "developmentAreas_ar": [],
+    "trainingNeeds_ar": [],
+    "pip_ar": {
+      "objectives": [],
+      "actions": [],
+      "timeline": "",
+      "successMetrics": []
+    }
+  }
+}
+
+Also return Arabic translations for all text fields.
+
+Rules:
+- Translate professionally into Arabic
+- Keep meaning accurate (HR / healthcare context)
+- Do NOT leave translations empty
+
+Examples:
+
+Strength:
+❌ "Enhance infection control compliance"
+✅ "Demonstrates strong adherence to infection control protocols"
+
+Development:
+❌ "Improve documentation accuracy"
+✅ "Documentation accuracy requires improvement based on audit findings"
+
+Training:
+"Clinical documentation standards training"
+`
+
+  try {
+    const raw = await callAI(prompt)
+    console.log('🔥 RAW AI:', raw)
+
+    const jsonStart = raw.indexOf('{')
+    const jsonEnd = raw.lastIndexOf('}') + 1
+    const jsonString = raw.slice(jsonStart, jsonEnd)
+
+    const parsed = JSON.parse(jsonString)
+
+    // 🔥 3. SAFETY CHECK
+    const needsPIP =
+      typeof parsed.needsPIP === 'boolean' ? parsed.needsPIP : fallback.needsPIP
+
+    // 🔥 NEW: Smart PIP fallback
+    let pip = parsed.pip
+
+    if (needsPIP && (!pip || !pip.objectives?.length)) {
+      pip = {
+        objectives: lowGoals.map((g: any) => `Improve ${g.title}`),
+        actions: [
+          'Attend relevant training programs',
+          'Follow supervisor guidance and monitoring',
+        ],
+        timeline: '60 days',
+        successMetrics: [
+          'Achieve target performance ratings',
+          'Demonstrate measurable improvement',
+        ],
+      }
+    }
+
+    return {
+      strengths: ensureMinItems(parsed.strengths, fallback.strengths),
+
+      developmentAreas: ensureMinItems(
+        parsed.developmentAreas,
+        fallback.developmentAreas,
+      ),
+
+      trainingNeeds: normalize(
+        parsed.trainingNeeds?.length
+          ? parsed.trainingNeeds
+          : fallback.trainingNeeds,
+      ),
+
+      needsPIP,
+
+      pip: needsPIP ? pip : null,
+      translations: parsed.translations || null,
+    }
+  } catch (err) {
+    console.error('AI FAILED → using fallback')
+
+    return fallback
   }
 }
 
@@ -127,3 +290,10 @@ Return STRICT JSON only:
     }))
   }
 }
+
+const ensureMinItems = (arr: string[], fallback: string[]) => {
+  if (!arr || arr.length < 2) return fallback
+  return arr
+}
+
+const normalize = (arr: string[]) => [...new Set(arr.map((t) => t.trim()))]

@@ -640,3 +640,28 @@ export const generateAppraisalFeedback = async (appraisalId: string) => {
 
   return feedback
 }
+
+export const updateAppraisal = async (
+  id: string,
+  data: {
+    strengths?: any
+    developmentAreas?: any
+    comments?: string
+    pip?: any
+  },
+) => {
+  return await db
+    .update(employeeAppraisals)
+    .set(data)
+    .where(eq(employeeAppraisals.id, id))
+}
+
+export const getAppraisalById = async (id: string) => {
+  const result = await db
+    .select()
+    .from(employeeAppraisals)
+    .where(eq(employeeAppraisals.id, id))
+    .limit(1)
+
+  return result[0] ?? null
+}

@@ -6,6 +6,7 @@ import {
   text,
   timestamp,
   boolean,
+  jsonb,
 } from 'drizzle-orm/pg-core'
 import { baseColumns } from './base'
 import { appraisalRatingEnum, appraisalStatusEnum } from './enums'
@@ -40,6 +41,7 @@ export const employeeAppraisals = pgTable('employee_appraisals', {
   strengths: text('strengths'),
   developmentAreas: text('development_areas'),
   comments: text('comments'),
+  pip: jsonb('pip'),
   acknowledgedAt: timestamp('acknowledged_at'),
   acknowledgedBy: uuid('acknowledged_by'),
   // 🟢 PLANNING SIGNATURES

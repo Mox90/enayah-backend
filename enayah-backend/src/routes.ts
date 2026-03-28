@@ -15,6 +15,7 @@ import employeeAppraisalRoutes from './modules/employeeAppraisals/employeeApprai
 import goalRoutes from './modules/employeeGoals/employeeGoals.routes'
 import competencyRoutes from './modules/employeeCompetencies/employeeCompetencies.routes'
 import appraisalApprovalRoutes from './modules/appraisalApprovals/appraisalApproval.routes'
+import pipRoutes from './modules/pips/pip.routes'
 
 const router = Router()
 
@@ -38,6 +39,7 @@ router.use('/appraisals', employeeAppraisalRoutes)
 router.use('/goals', goalRoutes)
 router.use('/competencies', competencyRoutes)
 router.use('/appraisals-approvals', appraisalApprovalRoutes)
+router.use('/pip', pipRoutes)
 
 router.get('/secure', authenticate, (req, res) => {
   res.json({ user: req.user })

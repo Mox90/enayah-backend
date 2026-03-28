@@ -1,0 +1,1 @@
+ALTER TABLE "pips" ADD COLUMN "manager_comments" text;

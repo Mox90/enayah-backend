@@ -12,6 +12,16 @@ import {
   launchAppraisalSchema,
 } from './employeeAppraisals.schema'
 import { requireManager, requireHR, requireEmployee } from '../../utils/auth'
+import { generateAIInsights } from '../ai/aiAppraisal.service'
+import { predictRisk } from '../ai/aiRisk.service'
+import {
+  computeCompetenciesScore,
+  computeGoalsScore,
+  getCompetenciesByAppraisalId,
+  getGoalsByAppraisalId,
+} from '../../utils/appraisal.utils'
+import { getAppraisalById } from './employeeAppraisals.service'
+import { createPIP, getPIPByAppraisal } from '../pips/pip.service'
 
 export const launchAppraisalController = asyncHandler(
   async (req: Request, res: Response) => {
@@ -153,7 +163,7 @@ export const updateFeedbackController = asyncHandler(
   },
 )
 
-export const generateFeedbackController = asyncHandler(
+/*export const generateFeedbackController = asyncHandler(
   async (req: Request, res: Response) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
 
@@ -163,4 +173,180 @@ export const generateFeedbackController = asyncHandler(
 
     return successResponse(res, result, 'AI feedback generated')
   },
-)
+)*/
+export const generateFeedbackController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    console.log('🔥 CONTROLLER HIT')
+    console.log('QUERY:', req.query)
+
+    //const { id } = req.params
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+    if (!id) throw new AppError('Appraisal ID required', 400)
+    // 🔹 1. Fetch appraisal
+    const appraisal = await getAppraisalById(id)
+
+    if (!appraisal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appraisal not found',
+      })
+    }
+
+    // ✅ 🔥 2. PREVENT duplicate AI calls (PUT HERE)
+    const force = req.query.force === 'true'
+    console.log('FORCE:', force)
+    console.log(
+      'BLOCK CONDITION:',
+      !force &&
+        appraisal.strengths &&
+        appraisal.developmentAreas &&
+        appraisal.pip,
+    )
+    if (
+      !force &&
+      appraisal.strengths &&
+      appraisal.developmentAreas &&
+      appraisal.pip
+    ) {
+      return res.json({
+        success: true,
+        message: 'Feedback already generated',
+      })
+    }
+
+    // 🔹 3. Fetch related data
+    const goals = await getGoalsByAppraisalId(id)
+    const competencies = await getCompetenciesByAppraisalId(id)
+
+    // 🔹 4. Compute scores
+    const goalsScore = computeGoalsScore(goals)
+    const competenciesScore = computeCompetenciesScore(competencies)
+    const finalScore = (goalsScore + competenciesScore) / 2
+
+    console.log({
+      goalsScore,
+      competenciesScore,
+    })
+
+    const formattedGoals = goals.map((g: any) => ({
+      title: g.title,
+      rating: g.fulfillmentRating,
+    }))
+
+    const formattedCompetencies = competencies.map((c: any) => ({
+      name: c.competency?.name || 'Unknown competency',
+      rating: c.fulfillmentRating,
+    }))
+
+    // 🔹 5. Risk detection
+    const risk = predictRisk({ goals, competencies })
+
+    const confidenceScore = Number(
+      (
+        (goals.filter((g: any) => g.fulfillmentRating != null).length +
+          competencies.filter((c: any) => c.fulfillmentRating != null).length) /
+        (goals.length + competencies.length)
+      ).toFixed(2),
+    )
+
+    // 🔹 6. Build AI payload
+    const payload = {
+      employee: appraisal.employeeNameSnapshot,
+      jobTitle: appraisal.jobTitleSnapshot,
+      department: appraisal.departmentSnapshot,
+      goals: formattedGoals,
+      competencies: formattedCompetencies,
+      finalScore,
+      riskLevel: risk.riskLevel,
+      riskScore: risk.riskScore,
+      riskReasons: risk.reasons,
+    }
+
+    // ✅ 🔥 7. AI CALL (PUT TRY/CATCH HERE)
+    let aiResponse
+
+    try {
+      aiResponse = await generateAIInsights(payload)
+    } catch (error: any) {
+      console.error('AI ERROR:', error?.message)
+
+      return res.status(500).json({
+        success: false,
+        message: 'AI service unavailable or quota exceeded',
+      })
+    }
+
+    // 🔥 ADD IT HERE (RIGHT AFTER AI RESPONSE)
+    aiResponse = ensurePIP(aiResponse)
+
+    const existingPIP = await getPIPByAppraisal(id)
+
+    if (!existingPIP && aiResponse.needsPIP && aiResponse.pip) {
+      const pip = aiResponse.pip
+
+      const objectives = pip.objectives.join('\n')
+      const actionPlan = pip.actions.join('\n')
+      const successCriteria = pip.successMetrics.join('\n')
+
+      const level = risk.riskLevel === 'high' ? 'critical' : 'moderate'
+
+      const durationDays = parseInt(pip.timeline) || 60
+
+      // ⚠️ IMPORTANT: you are NOT using tx yet
+      await createPIP(db, {
+        appraisalId: id,
+        objectives,
+        actionPlan,
+        successCriteria,
+        level,
+        durationDays,
+      })
+    }
+
+    // 🔹 8. Save to DB
+    await service.updateAppraisal(id, {
+      strengths: aiResponse.strengths,
+      developmentAreas: aiResponse.developmentAreas,
+      comments: aiResponse.needsPIP
+        ? 'Recommended for Performance Improvement Plan (PIP)'
+        : 'Satisfactory performance',
+      pip: aiResponse.needsPIP ? aiResponse.pip : null,
+    })
+
+    // 🔹 9. Return response
+    return res.json({
+      success: true,
+      data: {
+        finalScore,
+        riskLevel: risk.riskLevel,
+        confidenceScore,
+        insights: aiResponse,
+      },
+    })
+  } catch (error) {
+    console.error('CONTROLLER ERROR:', error)
+
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    })
+  }
+}
+
+const ensurePIP = (aiResponse: any) => {
+  if (aiResponse.needsPIP && !aiResponse.pip) {
+    return {
+      ...aiResponse,
+      pip: {
+        objectives: ['Improve performance in key areas'],
+        actions: ['Follow supervisor guidance'],
+        timeline: '60 days',
+        successMetrics: ['Meet expected performance standards'],
+      },
+    }
+  }
+  return aiResponse
+}
