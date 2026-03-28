@@ -229,8 +229,10 @@ export const generateFeedbackController = async (
     const cycle = await appraisalService.getCycleById(appraisal.cycleId)
 
     // fallback if missing
-    const goalsWeight = Number(cycle?.goalsWeight ?? 0.5)
-    const competenciesWeight = Number(cycle?.competenciesWeight ?? 0.5)
+    //const goalsWeight = Number(cycle?.goalsWeight ?? 0.5)
+    //const competenciesWeight = Number(cycle?.competenciesWeight ?? 0.5)
+    const goalsWeight = Number(cycle?.goalsWeight ?? 50) / 100
+    const competenciesWeight = Number(cycle?.competenciesWeight ?? 50) / 100
     const finalScore =
       goalsScore * goalsWeight + competenciesScore * competenciesWeight
 
@@ -321,7 +323,6 @@ export const generateFeedbackController = async (
         })
       }
 
-      // 🔥 👉 PUT IT HERE (INSIDE SAME TRANSACTION)
       await tx
         .update(employeeAppraisals)
         .set({

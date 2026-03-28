@@ -38,8 +38,10 @@ export const employeeAppraisals = pgTable('employee_appraisals', {
     .notNull()
     .$type<'planning' | 'evaluation'>()
     .default('planning'),
-  strengths: text('strengths'),
-  developmentAreas: text('development_areas'),
+  //strengths: text('strengths'),
+  //developmentAreas: text('development_areas'),
+  strengths: jsonb('strengths').$type<string[]>(),
+  developmentAreas: jsonb('development_areas').$type<string[]>(),
   comments: text('comments'),
   pip: jsonb('pip'),
   acknowledgedAt: timestamp('acknowledged_at'),
