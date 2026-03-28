@@ -11,15 +11,23 @@ export const predictRisk = (data: { goals: any[]; competencies: any[] }) => {
 
   let riskLevel: 'low' | 'medium' | 'high' = 'low'
 
-  if (riskScore >= 10) riskLevel = 'high'
-  else if (riskScore >= 5) riskLevel = 'medium'
+  //if (riskScore >= 10) riskLevel = 'high'
+  //else if (riskScore >= 5) riskLevel = 'medium'
+  if (lowGoals.length >= 2 || lowCompetencies.length >= 2 || riskScore >= 7) {
+    riskLevel = 'high'
+  } else if (riskScore >= 3) {
+    riskLevel = 'medium'
+  }
 
   return {
     riskLevel,
     riskScore,
     reasons: [
       ...lowGoals.map((g) => `Low goal: ${g.title}`),
-      ...lowCompetencies.map((c) => `Low competency: ${c.competency?.name}`),
+      ...lowCompetencies.map(
+        (c) =>
+          `Low competency: ${c.competency?.name || 'Competency'} (Rating: ${c.fulfillmentRating})`,
+      ),
     ],
   }
 }

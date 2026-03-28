@@ -1,4 +1,11 @@
-import { pgTable, uuid, text, timestamp, varchar } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  varchar,
+  integer,
+} from 'drizzle-orm/pg-core'
 import { baseColumns } from './base'
 import { pipLevelEnum, pipStatusEnum } from './enums'
 import { employeeAppraisals } from './employeeAppraisals'
@@ -17,6 +24,8 @@ export const performanceImprovementPlans = pgTable('pips', {
   successCriteria: text('success_criteria'),
   status: pipStatusEnum('status').default('active'),
   level: pipLevelEnum('level').default('moderate').notNull(),
+  progress: integer('progress').default(0),
+  managerComments: text('manager_comments'),
   outcome: text('outcome'),
   closedAt: timestamp('closed_at'),
   ...baseColumns,

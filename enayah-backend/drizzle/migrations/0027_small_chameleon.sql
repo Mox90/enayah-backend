@@ -1,0 +1,1 @@
+ALTER TABLE "pips" ADD COLUMN "progress" integer DEFAULT 0;

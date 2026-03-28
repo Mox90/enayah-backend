@@ -8,8 +8,8 @@ export const launchAppraisalSchema = z.object({
 export const appraisalFeedbackSchema = z.object({
   appraisalId: z.uuid(),
 
-  strengths: z.string().min(5),
-  developmentAreas: z.string().min(5),
+  strengths: z.array(z.string()),
+  developmentAreas: z.array(z.string()),
 
   comments: z.string().optional(),
 })

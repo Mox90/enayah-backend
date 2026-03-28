@@ -23,6 +23,8 @@ export const pipStatusEnum = pgEnum('pip_status', [
   'failed',
 ])
 
+export type PipStatus = 'active' | 'completed' | 'failed'
+
 export const pipOutcomeEnum = pgEnum('pip_outcome', ['successful', 'failed'])
 
 export const genderEnum = pgEnum('gender', ['male', 'female'])

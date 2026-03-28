@@ -154,3 +154,13 @@ export const submitScoring = async (appraisalId: string) => {
     }
   })
 }
+
+export const getCycleById = async (cycleId: string) => {
+  const result = await db
+    .select()
+    .from(appraisalCycles)
+    .where(eq(appraisalCycles.id, cycleId))
+    .limit(1)
+
+  return result[0] || null
+}

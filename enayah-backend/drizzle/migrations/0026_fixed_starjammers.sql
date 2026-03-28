@@ -1,0 +1,1 @@
+ALTER TABLE "employee_appraisals" ADD COLUMN "pip" jsonb;

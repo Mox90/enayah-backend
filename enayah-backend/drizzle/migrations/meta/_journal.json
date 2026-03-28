@@ -183,6 +183,41 @@
       "when": 1774649576997,
       "tag": "0025_confused_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1774681871595,
+      "tag": "0026_fixed_starjammers",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1774691860712,
+      "tag": "0027_small_chameleon",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1774691993069,
+      "tag": "0028_famous_ultragirl",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1774698599228,
+      "tag": "0029_polite_corsair",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1774700432961,
+      "tag": "0030_equal_nextwave",
+      "breakpoints": true
     }
   ]
 }
